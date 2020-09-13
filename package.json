@@ -1,0 +1,26 @@
+{
+  "name": "gh-issues-ltt",
+  "version": "1.0.0",
+  "description": "Extracts lists from a GitHub Issue and Transforms them to Tasks",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Link-/gh-issues-ltt.git"
+  },
+  "keywords": [
+    "github-action"
+  ],
+  "author": "Link-",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Link-/gh-issues-ltt/issues"
+  },
+  "homepage": "https://github.com/Link-/gh-issues-ltt#readme",
+  "dependencies": {
+    "@actions/core": "^1.2.5",
+    "@octokit/action": "^3.1.0"
+  }
+}
