@@ -14,7 +14,7 @@ jobs:
   fetchIssues:
     runs-on: ubuntu-latest
     steps:
-      - uses: octokit/graphql-action@v2.x
+      - uses: link-/gh-issues-ltt@v0.1-alpha
         id: fetch_issues
         with:
           user: "Link-"
