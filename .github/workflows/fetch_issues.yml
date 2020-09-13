@@ -1,7 +1,7 @@
 name: Fetch issues
-on:
-  schedule:
-    - cron:  '*/5 * * * *'
+# on:
+#   schedule:
+#     - cron:  '*/5 * * * *'
 
 
 jobs:
