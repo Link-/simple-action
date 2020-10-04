@@ -1,7 +1,7 @@
 name: Fetch issues
-# on:
-#   schedule:
-#     - cron:  '*/5 * * * *'
+on:
+  issues:
+    types: [opened]
 
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
         id: fetch_issues
         with:
           user: "Link-"
-          organization: "Nebuchadnezzar-Corp"
+          repo: "gh-issues-ltt"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: "echo ${{ steps.fetch_issues.outputs.data }}'"
