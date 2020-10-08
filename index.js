@@ -1,10 +1,8 @@
-const fakeCore = require("@actions/core");
+const core = require("@actions/core");
 const fetch = require("node-fetch");
-const marked = require("marked")
-const match = require("@menadevs/objectron");
+const marked = require("marked");
 
 const GITHUB_API_URL = "https://api.github.com/graphql"
-
 
 /**
  * Returns current date/time with the format: '2012-11-04 14:55:45'
@@ -15,11 +13,12 @@ function getNow() {
     replace(/\..+/, '')     // delete the dot and everything after
 }
 
+
 /**
  * Executes a GraphQL query to fetch the issues for a given repository
  * and returns the list of issues in a JSON format
  */
-function fetchIssues(params) {
+function fetchIssue(params) {
   const headers = {
     "Authorization": `Bearer ${params.token}`,
     "Content-Type": "application/json"
@@ -29,21 +28,16 @@ function fetchIssues(params) {
 query {
   user(login: "${params.user}") {
     repository(name: "${params.repo}") {
-      issues(first: 10, filterBy: {
-        createdBy: "${params.user}",
-        states: OPEN
-      }) {
-        nodes {
-          number
-          id
-          databaseId
-          title
-          state
-          author {
-            login
-          }
-          body
+      issue(number: ${params.issueNumber}) {
+        number
+        id
+        databaseId
+        title
+        state
+        author {
+          login
         }
+        body
       }
     }
   }
@@ -58,7 +52,8 @@ query {
       return res.json();
     })
     .then(res => {
-      return res.data.user.repository.issues.nodes;
+      console.log(res);
+      return res.data.user.repository.issue;
     })
     .catch(error => {
       console.log("FATAL: Could not fetch aggregate issue: ", error.message);
@@ -116,113 +111,194 @@ query {
     });
 }
 
+
 /**
- * Gets a list of issues fetched from a repository and parses the markdown
+ * Gets an issue fetched from a repository and parses the markdown
  * to extract the action items
  * 
- * @param {*} issues Issues returned from fetchIssues()
+ * @param {*} issue Issues returned from fetchIssues()
  */
-function extractActionItems(params, issues) {
+function extractActionItems(params, issue) {
   return new Promise((resolve, reject) => {
-    const expected = []
-    // Make sure the argument matches the expected format
-    if (!match(issues, expected).match)
-      throw new Error("FATAL: Fetched issues do not match expected format.")
-
-    issues.forEach((issue) => {
-      let tokens = marked.lexer(issue.body);
-      const structure = [
-        {
-          type: 'heading',
-          depth: 3,
-          text: /(?<flag>[A|a]ction [I|i]tems)/,
-        },
-        {
-          type: 'list',
-          ordered: false,
-          loose: false,
-          items: (val) => val
-        }
-      ]
-      // If we have a match of the expected structure
-      // Extract the items from the list
-      let result = match(tokens, structure);
-      if (result.match) {
-        // result.matches should contain 2 objects: 
-        // - The first is the heading with the "Action Items" flag
-        // - The second is the list of items
-        // We will return the second object item in this case. An array
-        // of list items
-        // console.log(result.matches[1].items)
+    // We shouldn't handle more than 1 issue at a time
+    let tokens = marked.lexer(issue.body);
+    let headingPattern = /(?<flag>[A|a]ction [I|i]tems)/;
+    let index = 0;
+    while (index < tokens.length) {
+      // We found the Action Items block
+      if (tokens[index].type == 'heading' && headingPattern.test(tokens[index].text)) {
         resolve({
           extractionDate: getNow(),
+          title: issue.title,
           number: issue.number,
-          items: result.matches[1].items
-        })
+          // The heading block should immediately be followed by the 
+          // action items list. We only need its items for the next
+          // step
+          items: tokens[index + 1].items
+        });
       }
-    });
+      index++;
+    }
     // If no action items were found, return an empty object
-    reject({});
+    resolve({});
   });
 }
 
 
+/**
+ * 
+ * @param {*} params 
+ * @param {*} aggregateIssue 
+ */
+function updateAggregateIssue(params, aggregateIssue) {
+  const headers = {
+    "Authorization": `Bearer ${params.token}`,
+    "Content-Type": "application/json"
+  }
+  const query = {
+    "query": `
+mutation ($updateIssueInput:UpdateIssueInput!) {
+  updateIssue(input:$updateIssueInput) {
+    clientMutationId
+  }
+}`,
+    "variables": {
+      "updateIssueInput": {
+        "id": `"${aggregateIssue.id}"`,
+        "body": `${aggregateIssue.body}`
+      }
+    }
+  };
+  // console.log(query);
+  return fetch(GITHUB_API_URL, {
+    method: "POST",
+    body: JSON.stringify(query),
+    headers: headers
+  })
+    .then(res => {
+      return res.json();
+    })
+    .then(res => {
+      console.log(res);
+    })
+    .catch(error => {
+      console.log("FATAL: Could not update aggregate issue: ", error.message);
+    });
+}
+
+
+/**
+ * 
+ * @param {*} params 
+ * @param {*} actionItems 
+ * @param {*} aggregateIssue 
+ */
 function syncAggregateIssue(params, actionItems, aggregateIssue) {
   const parsedAggregateIssue = marked.lexer(aggregateIssue.body);
-  console.log(parsedAggregateIssue);
-  parsedAggregateIssue.forEach((block) => {
-    const syncSection = match(
-      block,
-        {
-          type: 'heading',
-          depth: 4,
-          text: /.*(?<issueNumber>#[0-9]*) - (?<date>.*)/
-        }
-    )
-    console.log(syncSection);
-  });
+  // console.log(actionItems);
+  console.log(actionItems)
+  // Identify the heading and the list right below it that require change
+  let syncHeading = {};
+  let syncList = {};
+  let index = 0;
+
+  while (index < parsedAggregateIssue.length) {
+    let block = parsedAggregateIssue[index];
+    // console.log(block);
+    // When we have both the heading and the list. This assumes
+    // the list comes after the heading matching.
+    // It assumes the list belongs to the heading right above it
+    const headingTextPattern = new RegExp(`.*(?<issueNumber>#${actionItems.number}) - (?<date>.*)`);
+    let headingMatches = headingTextPattern.exec(block.text);
+    if (block.type == "heading" && block.depth == 4 && headingMatches) {
+      // Issue found - sync
+      syncHeading = block;
+      syncHeading["date"] = headingMatches.groups.date;
+      syncList = parsedAggregateIssue[index + 1];
+      // Extract the date from the heading to see if there are changes
+      if (syncHeading.date !== actionItems.extractionDate) {
+        const listReducer = (acc, item) => {
+          return acc.concat(item.raw, "\r\n");
+        };
+        const newActionItemsList = actionItems.items.reduce(listReducer, "").replace(/[\n\r]+$/, '');
+        const oldActionItemsList = syncList.items.reduce(listReducer, "").replace(/[\n\r]+$/, '');
+        const oldHeading = syncHeading.raw.replace(/[\n\r]+/g, '');
+        const newHeading = oldHeading.replace(
+          new RegExp(` - (?<issueNumber>#${actionItems.number}) - (?<date>.*)`),
+          ` - $<issueNumber> - ${actionItems.extractionDate}`
+        );
+        aggregateIssue.body = aggregateIssue.body.replace(oldHeading, newHeading).replace(oldActionItemsList, newActionItemsList);
+        // aggregateIssue.body = aggregateIss"ue.body;
+        // console.log(oldActionItemsList, "\r\n", newActionItemsList);
+        console.log("\r\n", aggregateIssue);
+        // Push the changes to GitHub
+        return updateAggregateIssue(params, aggregateIssue);
+      } else {
+        // Do nothing
+        return;
+      }
+    }
+    // Jumpt to next item
+    index++;
+  }
+  // If the issue was not found - Add it
+  const listReducer = (acc, item) => {
+    return acc.concat(item.raw, "\r\n");
+  };
+  const newActionItemsList = actionItems.items.reduce(listReducer, "").replace(/[\n\r]+$/, '');
+  // Issue not found - Create it
+  const issueBody = `
+\r
+#### ${actionItems.title} - #${actionItems.number} - ${getNow()}
+${newActionItemsList}
+`
+  aggregateIssue.body = aggregateIssue.body.concat(issueBody);
+  console.log("\r\n", aggregateIssue);
+  return updateAggregateIssue(params, aggregateIssue);
 }
 
+/**
+ * 
+ */
 function main() {
   try {
-    const variables = {
+    const params = {
       user: core.getInput('user'),
       repo: core.getInput('repo'),
+      issueNumber: core.getInput('issueNumber'),
       token: process.env.GITHUB_TOKEN
     }
-    core.info(`Fetching all tasks from ${variables.repo} of ${variables.user}`)
-
+    core.info(`Syncing all new action items in ${params.repo} from issue #${issueNumber}`);
     const time = (new Date()).toTimeString();
     core.setOutput("time", time);
-
-    // const data = await fetchIssues(variables.token, variables.user, variables.repo);
-
-    core.info(`< 200 ${Date.now() - time}ms`);
-    core.setOutput("data", JSON.stringify(data, null, 2));
+    core.setOutput("INFO: Fetching details of issue #${issueNumber}");
+    // Fetch issue details and sync with aggregate issue
+    fetchIssue(params)
+      .then((issue) => {
+        core.setOutput("INFO: Extracting action items");
+        return extractActionItems(params, issue)
+      })
+      .then((actionItems) => {
+        core.setOutput("INFO: Fetching aggregate issue details");
+        return Promise.all([fetchAggregateIssue(params), actionItems]);
+      })
+      .then(([aggregateIssue, actionItems]) => {
+        core.setOutput("INFO: Looking for changes and syncing...");
+        return syncAggregateIssue(params, actionItems, aggregateIssue);
+      })
+      .catch(error => {
+        core.debug(error);
+        core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
+      })
+      .finally(() => {
+        core.info(`< 200 ${Date.now() - time}ms`);
+        core.setOutput(`INFO: Action items syncing completed successfully!`);
+      });
   } catch (error) {
     core.debug(error);
     core.setFailed(error.message);
   }
 }
 
-const params = {
-  token: process.env.GITHUB_TOKEN,
-  user: "Link-",
-  repo: "gh-issues-ltt"
-}
-
-fetchIssues(params)
-  .then((issues) => {
-    // console.dir(issues, { depth: null });
-    return extractActionItems(params, issues)
-  })
-  .then((actionItems) => {
-    // console.dir(actionItems, { depth: null });
-    return Promise.all([fetchAggregateIssue(params), actionItems]);
-  })
-  .then(([aggregateIssue, actionItems]) => {
-    return syncAggregateIssue(params, actionItems, aggregateIssue);
-  })
-  // .catch(error => {
-  //   console.log("FATAL: Could not sync aggregate issue: ", error.message);
-  // });
+// Execute
+main();
