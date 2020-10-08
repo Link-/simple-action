@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v2
       - name: "Sync Ation Items"
         id: sync_action_items
-        uses: ./
+        uses: link-/gh-issues-ltt@v0.5-alpha
         with:
           user: "Link-"
           repo: "gh-issues-ltt"
