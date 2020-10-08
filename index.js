@@ -265,7 +265,7 @@ function main() {
     const params = {
       user: core.getInput('user'),
       repo: core.getInput('repo'),
-      issueNumber: core.getInput('issueNumber'),
+      issueNumber: core.getInput('issuenumber'),
       token: process.env.GITHUB_TOKEN
     }
     core.info(`Syncing all new action items in ${params.repo} from issue #${issueNumber}`);
