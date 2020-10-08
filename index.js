@@ -52,11 +52,11 @@ query {
       return res.json();
     })
     .then(res => {
-      console.log(res);
+      // core.setOutput(res);
       return res.data.user.repository.issue;
     })
     .catch(error => {
-      console.log("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.setOutput("FATAL: Could not fetch aggregate issue: ", error.message);
     });
 }
 
@@ -107,7 +107,7 @@ query {
       return res.data.user.repository.issues.nodes[0];
     })
     .catch(error => {
-      console.log("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.setOutput("FATAL: Could not fetch aggregate issue: ", error.message);
     });
 }
 
@@ -169,7 +169,7 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
       }
     }
   };
-  // console.log(query);
+  // core.setOutput(query);
   return fetch(GITHUB_API_URL, {
     method: "POST",
     body: JSON.stringify(query),
@@ -179,10 +179,10 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
       return res.json();
     })
     .then(res => {
-      console.log(res);
+      return res;
     })
     .catch(error => {
-      console.log("FATAL: Could not update aggregate issue: ", error.message);
+      core.setOutput("FATAL: Could not update aggregate issue: ", error.message);
     });
 }
 
@@ -195,8 +195,8 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
  */
 function syncAggregateIssue(params, actionItems, aggregateIssue) {
   const parsedAggregateIssue = marked.lexer(aggregateIssue.body);
-  // console.log(actionItems);
-  console.log(actionItems)
+  // core.setOutput(actionItems);
+  core.setOutput(actionItems)
   // Identify the heading and the list right below it that require change
   let syncHeading = {};
   let syncList = {};
@@ -204,7 +204,7 @@ function syncAggregateIssue(params, actionItems, aggregateIssue) {
 
   while (index < parsedAggregateIssue.length) {
     let block = parsedAggregateIssue[index];
-    // console.log(block);
+    // core.setOutput(block);
     // When we have both the heading and the list. This assumes
     // the list comes after the heading matching.
     // It assumes the list belongs to the heading right above it
@@ -229,8 +229,8 @@ function syncAggregateIssue(params, actionItems, aggregateIssue) {
         );
         aggregateIssue.body = aggregateIssue.body.replace(oldHeading, newHeading).replace(oldActionItemsList, newActionItemsList);
         // aggregateIssue.body = aggregateIss"ue.body;
-        // console.log(oldActionItemsList, "\r\n", newActionItemsList);
-        console.log("\r\n", aggregateIssue);
+        // core.setOutput(oldActionItemsList, "\r\n", newActionItemsList);
+        // core.setOutput("\r\n", aggregateIssue);
         // Push the changes to GitHub
         return updateAggregateIssue(params, aggregateIssue);
       } else {
@@ -253,7 +253,7 @@ function syncAggregateIssue(params, actionItems, aggregateIssue) {
 ${newActionItemsList}
 `
   aggregateIssue.body = aggregateIssue.body.concat(issueBody);
-  console.log("\r\n", aggregateIssue);
+  // core.setOutput("\r\n", aggregateIssue);
   return updateAggregateIssue(params, aggregateIssue);
 }
 
@@ -261,7 +261,7 @@ ${newActionItemsList}
  * 
  */
 function main() {
-  // try {
+  try {
     const params = {
       user: core.getInput('user'),
       repo: core.getInput('repo'),
@@ -271,7 +271,7 @@ function main() {
     core.info(`Syncing all new action items in ${params.repo} from issue #${params.issueNumber}`);
     const time = (new Date()).toTimeString();
     core.setOutput("time", time);
-    core.setOutput("INFO: Fetching details of issue #${params.issueNumber}");
+    core.setOutput(`INFO: Fetching details of issue #${params.issueNumber}`);
     // Fetch issue details and sync with aggregate issue
     fetchIssue(params)
       .then((issue) => {
@@ -286,18 +286,18 @@ function main() {
         core.setOutput("INFO: Looking for changes and syncing...");
         return syncAggregateIssue(params, actionItems, aggregateIssue);
       })
-      // .catch(error => {
-      //   core.debug(error);
-      //   core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
-      // })
+      .catch(error => {
+        core.debug(error);
+        core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
+      })
       .finally(() => {
         core.info(`< 200 ${Date.now() - time}ms`);
         core.setOutput(`INFO: Action items syncing completed successfully!`);
       });
-  // } catch (error) {
-  //   core.debug(error);
-  //   core.setFailed(error.message);
-  // }
+  } catch (error) {
+    core.debug(error);
+    core.setFailed(error.message);
+  }
 }
 
 // Execute
