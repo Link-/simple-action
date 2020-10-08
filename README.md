@@ -1,25 +1,25 @@
 # gh-issues-ltt
-> Extracts lists from a GitHub Issue and Transforms them to Tasks
+> Extracts action items from issue and aggregates them into 1 issue
 
 ## Usage
 
 ```
-name: Fetch issues
+name: Synchronize Action Items
 on:
-  schedule:
-    - cron:  '*/5 * * * *'
+  issues:
+    types: [opened, edited]
 
 
 jobs:
-  fetchIssues:
+  Sync-Action-Items:
     runs-on: ubuntu-latest
     steps:
-      - uses: link-/gh-issues-ltt@v0.1-alpha
-        id: fetch_issues
+      - uses: link-/gh-issues-ltt@v0.4-alpha
+        id: sync_action_items
         with:
           user: "Link-"
-          organization: "Nebuchadnezzar-Corp"
+          repo: "gh-issues-ltt"
+          issueNumber: "${{ github.event.issue.number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: "echo ${{ steps.fetch_issues.outputs.data }}'"
 ```
