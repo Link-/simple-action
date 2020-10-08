@@ -8,7 +8,7 @@ jobs:
   Sync-Action-Items:
     runs-on: ubuntu-latest
     steps:
-      - uses: link-/gh-issues-ltt@v0.3-alpha
+      - uses: link-/gh-issues-ltt@v0.4-alpha
         id: sync_action_items
         with:
           user: "Link-"
