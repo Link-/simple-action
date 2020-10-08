@@ -265,13 +265,13 @@ function main() {
     const params = {
       user: core.getInput('user'),
       repo: core.getInput('repo'),
-      issueNumber: core.getInput('issuenumber'),
+      issueNumber: core.getInput('issueNumber'),
       token: process.env.GITHUB_TOKEN
     }
-    core.info(`Syncing all new action items in ${params.repo} from issue #${issueNumber}`);
+    core.info(`Syncing all new action items in ${params.repo} from issue #${params.issueNumber}`);
     const time = (new Date()).toTimeString();
     core.setOutput("time", time);
-    core.setOutput("INFO: Fetching details of issue #${issueNumber}");
+    core.setOutput("INFO: Fetching details of issue #${params.issueNumber}");
     // Fetch issue details and sync with aggregate issue
     fetchIssue(params)
       .then((issue) => {
