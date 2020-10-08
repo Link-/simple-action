@@ -13,6 +13,6 @@ jobs:
         with:
           user: "Link-"
           repo: "gh-issues-ltt"
-          issueNumber: ${{ github.event.issue.number }}
+          issueNumber: "${{ github.event.issue.number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
