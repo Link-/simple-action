@@ -261,7 +261,7 @@ ${newActionItemsList}
  * 
  */
 function main() {
-  try {
+  // try {
     const params = {
       user: core.getInput('user'),
       repo: core.getInput('repo'),
@@ -286,18 +286,18 @@ function main() {
         core.setOutput("INFO: Looking for changes and syncing...");
         return syncAggregateIssue(params, actionItems, aggregateIssue);
       })
-      .catch(error => {
-        core.debug(error);
-        core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
-      })
+      // .catch(error => {
+      //   core.debug(error);
+      //   core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
+      // })
       .finally(() => {
         core.info(`< 200 ${Date.now() - time}ms`);
         core.setOutput(`INFO: Action items syncing completed successfully!`);
       });
-  } catch (error) {
-    core.debug(error);
-    core.setFailed(error.message);
-  }
+  // } catch (error) {
+  //   core.debug(error);
+  //   core.setFailed(error.message);
+  // }
 }
 
 // Execute
