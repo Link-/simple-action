@@ -8,7 +8,7 @@ jobs:
   fetchIssues:
     runs-on: ubuntu-latest
     steps:
-      - uses: link-/gh-issues-ltt@v0.1-alpha
+      - uses: link-/gh-issues-ltt@v0.2-alpha
         id: sync_action_items
         with:
           user: "Link-"
