@@ -1,4 +1,4 @@
-name: Fetch issues
+name: Synchronize Action Items
 on:
   issues:
     types: [opened]
@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: link-/gh-issues-ltt@v0.1-alpha
-        id: fetch_issues
+        id: sync_action_items
         with:
           user: "Link-"
           repo: "gh-issues-ltt"
+          issueNumber: ${{ github.event.issue.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: "echo ${{ steps.fetch_issues.outputs.data }}'"
