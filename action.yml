@@ -2,4 +2,4 @@ name: 'GH-Issues-LtT'
 description: 'Extracts lists from a GitHub Issue and Transforms them to Tasks'
 runs:
   using: 'node12'
-  main: 'index.js'
+  main: 'dist/index.js'
