@@ -1,7 +1,7 @@
 name: Synchronize Action Items
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 
 jobs:
