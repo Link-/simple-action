@@ -15,8 +15,10 @@ function getNow() {
 
 
 /**
- * Executes a GraphQL query to fetch the issues for a given repository
- * and returns the list of issues in a JSON format
+ * Executes a GraphQL query to fetch the issue we're syncing.
+ * Returns the data for the issue in a JSON format.
+ *
+ * @param {*} params 
  */
 function fetchIssue(params) {
   const headers = {
@@ -52,7 +54,6 @@ query {
       return res.json();
     })
     .then(res => {
-      // core.setOutput(res);
       return res.data.user.repository.issue;
     })
     .catch(error => {
@@ -62,8 +63,9 @@ query {
 
 
 /**
- * Will lookup the OPEN issue labled with: gh-issues-ltt
- * If more than 1 issue exists, it will return the first only
+ * Will fetch the first OPEN aggregate issue with the label 'gh-issues-ltt'
+ *
+ * @param {*} params 
  */
 function fetchAggregateIssue(params) {
   const headers = {
@@ -113,9 +115,9 @@ query {
 
 
 /**
- * Gets an issue fetched from a repository and parses the markdown
+ * Get an issue fetched from a repository and parse the markdown
  * to extract the action items
- * 
+ *
  * @param {*} issue Issues returned from fetchIssues()
  */
 function extractActionItems(params, issue) {
@@ -146,7 +148,8 @@ function extractActionItems(params, issue) {
 
 
 /**
- * 
+ * Push a new body of the aggregate issue
+ *
  * @param {*} params 
  * @param {*} aggregateIssue 
  */
@@ -169,7 +172,6 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
       }
     }
   };
-  // core.setOutput(query);
   return fetch(GITHUB_API_URL, {
     method: "POST",
     body: JSON.stringify(query),
@@ -188,6 +190,9 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
 
 
 /**
+ * Search the aggregate issue for a block matching the issue we're syncing.
+ * If it exists, sync it.
+ * Otherwise create a new block.
  * 
  * @param {*} params 
  * @param {*} actionItems 
@@ -195,19 +200,16 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
  */
 function syncAggregateIssue(params, actionItems, aggregateIssue) {
   const parsedAggregateIssue = marked.lexer(aggregateIssue.body);
-  // core.setOutput(actionItems);
-  core.setOutput(actionItems)
   // Identify the heading and the list right below it that require change
   let syncHeading = {};
   let syncList = {};
   let index = 0;
-
   while (index < parsedAggregateIssue.length) {
     let block = parsedAggregateIssue[index];
-    // core.setOutput(block);
-    // When we have both the heading and the list. This assumes
-    // the list comes after the heading matching.
-    // It assumes the list belongs to the heading right above it
+    // For each of the blocks in the aggregate issue we extract the heading 
+    // to check if a block belong to the issue we're syncing exists.
+    // If we find it, we sync the action items and the date
+    // otherwise we create a new block for the new issue
     const headingTextPattern = new RegExp(`.*(?<issueNumber>#${actionItems.number}) - (?<date>.*)`);
     let headingMatches = headingTextPattern.exec(block.text);
     if (block.type == "heading" && block.depth == 4 && headingMatches) {
@@ -228,10 +230,7 @@ function syncAggregateIssue(params, actionItems, aggregateIssue) {
           ` - $<issueNumber> - ${actionItems.extractionDate}`
         );
         aggregateIssue.body = aggregateIssue.body.replace(oldHeading, newHeading).replace(oldActionItemsList, newActionItemsList);
-        // aggregateIssue.body = aggregateIss"ue.body;
-        // core.setOutput(oldActionItemsList, "\r\n", newActionItemsList);
-        // core.setOutput("\r\n", aggregateIssue);
-        // Push the changes to GitHub
+        // Push the new content to the aggregate issue
         return updateAggregateIssue(params, aggregateIssue);
       } else {
         // Do nothing
@@ -253,7 +252,6 @@ function syncAggregateIssue(params, actionItems, aggregateIssue) {
 ${newActionItemsList}
 `
   aggregateIssue.body = aggregateIssue.body.concat(issueBody);
-  // core.setOutput("\r\n", aggregateIssue);
   return updateAggregateIssue(params, aggregateIssue);
 }
 
@@ -284,6 +282,7 @@ function main() {
       })
       .then(([aggregateIssue, actionItems]) => {
         core.setOutput("INFO: Looking for changes and syncing...");
+
         return syncAggregateIssue(params, actionItems, aggregateIssue);
       })
       .catch(error => {
