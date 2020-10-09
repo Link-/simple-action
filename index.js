@@ -199,6 +199,8 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
  * @param {*} aggregateIssue 
  */
 function syncAggregateIssue(params, actionItems, aggregateIssue) {
+  if (Object.entries(aggregateIssue).length === 0)
+    throw new Error('FATAL: Aggregate issue does not exist. Create it first and add the appropriate label.')
   const parsedAggregateIssue = marked.lexer(aggregateIssue.body);
   // Identify the heading and the list right below it that require change
   let syncHeading = {};
@@ -282,7 +284,6 @@ function main() {
       })
       .then(([aggregateIssue, actionItems]) => {
         core.setOutput("INFO: Looking for changes and syncing...");
-
         return syncAggregateIssue(params, actionItems, aggregateIssue);
       })
       .catch(error => {
