@@ -1,6 +1,6 @@
 {
   "name": "gh-issues-ltt",
-  "version": "0.6.0",
+  "version": "0.1.0",
   "description": "Extracts lists from a GitHub Issue and Transforms them to Tasks",
   "main": "index.js",
   "scripts": {

@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: "Sync Ation Items"
         id: sync_action_items
-        uses: link-/gh-issues-ltt@v0.6-alpha
+        uses: link-/gh-issues-ltt@v0.1.0-beta
         with:
           user: "Link-"
           repo: "gh-issues-ltt"
