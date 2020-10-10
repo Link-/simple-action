@@ -8,10 +8,11 @@
 ## Usage
 
 ### Pre-requisites
-1. Create an empty **Issue** in the same repository that will be the container for action items.
-2. Create a **label** with any name to mark the aggregate issue.
-3. Add the label create in step 2 to the **Issue** you just created.
-4. Add the label name to the workflow file on the repository you're setting up the action for.
+1. Create an empty **Issue** in the same repository that will be the container for action items
+2. Create a **label** with any name to mark the aggregate issue. Example: `aggregate_issue`
+3. Add the label create in step 2 to the **Issue** you just created
+4. Add the label name to the workflow file on the repository you're setting up the action for
+5. Create another **label** with any name to mark the issues you want to sync with the aggregate issue. Example: `sync_issue`
 
 ### Workflow setup
 In your repository create the folders `.github/workflows` if they don't exist already. Inside `.github/workflows` create a new workflow file and name it whatever you like.
@@ -20,7 +21,8 @@ Copy and paste the workflow below to your workflow file.
 
 **Make sure to:**
 1. Use the latest version of `link-/gh-issues-ltt`
-2. Update the **aggregateIssueLabel** `<IDENTIFYING_LABEL>` with the name of the identifying label you created in the pre-requisites.
+2. Update the label used to identify issue you want to sync `<SYNC_LABEL>` with a label name of choice
+3. Update the **aggregateIssueLabel** `<IDENTIFYING_LABEL>` with the name of the identifying label you created in the pre-requisites
 
 ```
 name: Synchronize Action Items
@@ -36,7 +38,7 @@ jobs:
       - name: "Sync Ation Items"
         id: sync_action_items
         uses: link-/gh-issues-ltt@v0.1.0-beta
-        if: ${{ contains(github.event.issue.labels.*.name, 'sync_issue') }}
+        if: ${{ contains(github.event.issue.labels.*.name, '<SYNC_LABEL>') }}
         with:
           user: "${{ github.actor }}"
           repo: "${{ github.repository_name }}"
@@ -54,6 +56,11 @@ jobs:
 ## Troubleshooting
 ### Error: FATAL: Could not sync aggregate issue: Cannot read property 'body' of undefined
 You haven't created the aggregate issue or you haven't applied the label `gh-issues-ltt` to it. This error means that the action is not able to fetch the aggregate issue.
+
+## Changelog
+- v0.1.1-beta
+  - Variable aggregate issue label
+  - Workflow is triggered by adding a sync label instead of open issue open / edit
 
 ## License
 - [MIT License](./LICENSE)
