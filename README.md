@@ -1,11 +1,15 @@
 # gh-issues-ltt
 > Extracts action items from issue and aggregates them into 1 issue
 
+## Demo
+
+![gh-issues-ltt Demo GIF](./assets/gh-issues-ltt-demo.gif)
+
 ## Usage
 
 ### Pre-requisites
-1. Create a **label** with the name: `gh-issues-ltt`
-2. Create an **Issue** in the same repository that will be the container for action items.
+1. Create an empty **Issue** in the same repository that will be the container for action items.
+2. Create a **label** with the name: `gh-issues-ltt`
 3. Add the label `gh-issues-ltt` to the **Issue** you just created.
 
 ### Workflow setup
@@ -39,6 +43,7 @@ jobs:
 ```
 
 ## Limitations
+- If the issue title has been modified, it'll be assumed as a new issue and a new block will be created.
 - The aggregate issue and the label will not be created automatically for you. If they don't exist the action will fail.
 - Using an aggregate issue in another repository is not possible.
 
