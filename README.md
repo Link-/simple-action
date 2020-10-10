@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: "Sync Ation Items"
         id: sync_action_items
-        uses: link-/gh-issues-ltt@v0.1.0-beta
+        uses: link-/gh-issues-ltt@v0.1.1-beta
         if: ${{ contains(github.event.issue.labels.*.name, '<SYNC_LABEL>') }}
         with:
           user: "${{ github.actor }}"
