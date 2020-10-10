@@ -9,8 +9,9 @@
 
 ### Pre-requisites
 1. Create an empty **Issue** in the same repository that will be the container for action items.
-2. Create a **label** with the name: `gh-issues-ltt`
-3. Add the label `gh-issues-ltt` to the **Issue** you just created.
+2. Create a **label** with any name to mark the aggregate issue.
+3. Add the label create in step 2 to the **Issue** you just created.
+4. Add the label name to the workflow file on the repository you're setting up the action for.
 
 ### Workflow setup
 In your repository create the folders `.github/workflows` if they don't exist already. Inside `.github/workflows` create a new workflow file and name it whatever you like.
@@ -19,25 +20,28 @@ Copy and paste the workflow below to your workflow file.
 
 **Make sure to:**
 1. Use the latest version of `link-/gh-issues-ltt`
-2. Update `<YOUR_USERNAME>` with your github handle
+2. Update the **aggregateIssueLabel** `<IDENTIFYING_LABEL>` with the name of the identifying label you created in the pre-requisites.
 
 ```
 name: Synchronize Action Items
 on:
   issues:
-    types: [opened, edited]
+    types: [labeled]
 
 
 jobs:
   Sync-Action-Items:
     runs-on: ubuntu-latest
     steps:
-      - uses: link-/gh-issues-ltt@v0.1.0-beta
+      - name: "Sync Ation Items"
         id: sync_action_items
+        uses: link-/gh-issues-ltt@v0.1.0-beta
+        if: ${{ contains(github.event.issue.labels.*.name, 'sync_issue') }}
         with:
-          user: "<YOUR_USERNAME>"
-          repo: "${{ github.repository.repository_name }}"
+          user: "${{ github.actor }}"
+          repo: "${{ github.repository_name }}"
           issueNumber: "${{ github.event.issue.number }}"
+          aggregateIssueLabel: "<IDENTIFYING_LABEL>"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -46,6 +50,10 @@ jobs:
 - If the issue title has been modified, it'll be assumed as a new issue and a new block will be created.
 - The aggregate issue and the label will not be created automatically for you. If they don't exist the action will fail.
 - Using an aggregate issue in another repository is not possible.
+
+## Troubleshooting
+### Error: FATAL: Could not sync aggregate issue: Cannot read property 'body' of undefined
+You haven't created the aggregate issue or you haven't applied the label `gh-issues-ltt` to it. This error means that the action is not able to fetch the aggregate issue.
 
 ## License
 - [MIT License](./LICENSE)
