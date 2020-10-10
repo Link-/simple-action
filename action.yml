@@ -10,6 +10,10 @@ inputs:
   issueNumber:
     description: 'Created / Edited Issue Number'
     required: true
+  aggregateIssueLabel:
+    description: 'Label to Mark the Aggregate Issue'
+    required: true
+    default: 'gh-issues-ltt'
 runs:
   using: 'node12'
   main: 'dist/index.js'
