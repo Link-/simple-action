@@ -1,7 +1,7 @@
 name: Synchronize Action Items
 on:
   issues:
-    types: [opened, edited]
+    types: [labeled]
 
 
 jobs:
@@ -11,9 +11,10 @@ jobs:
       - name: "Sync Ation Items"
         id: sync_action_items
         uses: link-/gh-issues-ltt@v0.1.0-beta
+        if: ${{ contains(github.event.issue.labels.*.name, 'sync_issue') }}
         with:
-          user: "Link-"
-          repo: "gh-issues-ltt"
+          user: "${{ github.actor }}"
+          repo: "${{ github.repository.repository_name }}"
           issueNumber: "${{ github.event.issue.number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
