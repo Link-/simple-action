@@ -78,7 +78,7 @@ query {
   user(login: "${params.user}") {
     repository(name: "${params.repo}") {
       issues(first: 1, filterBy: {
-        labels: ["gh-issues-ltt"],
+        labels: ["${params.aggregateIssueLabel}"],
         states: OPEN
       }) {
         nodes {
@@ -266,6 +266,7 @@ function main() {
       user: core.getInput('user'),
       repo: core.getInput('repo'),
       issueNumber: core.getInput('issueNumber'),
+      aggregateIssueLabel: core.getInput('aggregateIssueLabel'),
       token: process.env.GITHUB_TOKEN
     }
     core.info(`Syncing all new action items in ${params.repo} from issue #${params.issueNumber}`);
