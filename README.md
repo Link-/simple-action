@@ -1,5 +1,5 @@
 # gh-issues-ltt
-> Extracts action items from issue and aggregates them into 1 issue
+> Extract action items from multiple issues and aggregate them into 1
 
 ## Demo
 
