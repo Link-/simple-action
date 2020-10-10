@@ -41,7 +41,7 @@ jobs:
         if: ${{ contains(github.event.issue.labels.*.name, '<SYNC_LABEL>') }}
         with:
           user: "${{ github.actor }}"
-          repo: "${{ github.repository_name }}"
+          repo: "${{ github.event.repository.name }}"
           issueNumber: "${{ github.event.issue.number }}"
           aggregateIssueLabel: "<IDENTIFYING_LABEL>"
         env:
@@ -55,7 +55,7 @@ jobs:
 
 ## Troubleshooting
 ### Error: FATAL: Could not sync aggregate issue: Cannot read property 'body' of undefined
-You haven't created the aggregate issue or you haven't applied the label `gh-issues-ltt` to it. This error means that the action is not able to fetch the aggregate issue.
+This could be due to multiple problems. Revisit the `pre-requisites` and `workflow setup` sections.
 
 ## Changelog
 - v0.1.1-beta

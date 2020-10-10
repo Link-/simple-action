@@ -14,7 +14,7 @@ jobs:
         if: ${{ contains(github.event.issue.labels.*.name, 'sync_issue') }}
         with:
           user: "${{ github.actor }}"
-          repo: "${{ github.repository_name }}"
+          repo: "${{ github.event.repository.name }}"
           issueNumber: "${{ github.event.issue.number }}"
           aggregateIssueLabel: "gh-issues-ltt"
         env:
