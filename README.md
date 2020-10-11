@@ -76,7 +76,7 @@ jobs:
 This could be due to multiple problems. Revisit the `pre-requisites` and `workflow setup` sections.
 
 ## Changelog
-- v0.1.2-beta
+- v0.1.3-beta
   - Variable aggregate issue label
   - Workflow is triggered by adding a sync label instead of open issue open / edit
 
