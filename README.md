@@ -14,6 +14,24 @@
 4. Add the label name to the workflow file on the repository you're setting up the action for
 5. Create another **label** with any name to mark the issues you want to sync with the aggregate issue. Example: `sync_issue`
 
+### Action Items Structure
+In order for your action items list to be recognized and copied to the aggregate issue it should have the following format:
+
+```markdown
+...(whatever)
+
+### (whatever) Action Items (whatever)
+- [ ] What you want your action item body to be
+- [ ] This is another action item example
+- [ ] This is a 3rd expample with a reference to another issue #1
+- [ ] This is a 4th example with a date: 20 October 2021
+- [ ] Action item with a user mention @Link-
+
+...(whatever)
+```
+
+**(whatever)** represents anything. It could be an introduction section or anything else markdown supported.
+
 ### Workflow setup
 In your repository create the folders `.github/workflows` if they don't exist already. Inside `.github/workflows` create a new workflow file and name it whatever you like.
 
