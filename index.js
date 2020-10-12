@@ -52,10 +52,10 @@ query {
       return res.json();
     })
     .then(res => {
-      return res.data.user.repository.issue;
+      return res.data.repository.issue;
     })
     .catch(error => {
-      core.info("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.info("FATAL: Could not fetch issue: ", error.message);
       core.info(error.stack);
     });
 }
@@ -103,7 +103,7 @@ query {
       return res.json();
     })
     .then(res => {
-      return res.data.user.repository.issues.nodes[0];
+      return res.data.repository.issues.nodes[0];
     })
     .catch(error => {
       core.info("FATAL: Could not fetch aggregate issue: ", error.message);
@@ -286,14 +286,14 @@ function main() {
         core.info("INFO: Looking for changes and syncing...");
         return syncAggregateIssue(params, actionItems, aggregateIssue);
       })
+      .then(() => {
+        core.info('< 200');
+        core.setOutput(`INFO: Action items syncing completed successfully!`);
+      })
       .catch(error => {
         core.debug(error);
         core.info(error.stack);
         core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
-      })
-      .finally(() => {
-        core.info('< 200');
-        core.setOutput(`INFO: Action items syncing completed successfully!`);
       });
   } catch (error) {
     core.debug(error);
