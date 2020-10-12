@@ -257,7 +257,7 @@ ${newActionItemsList}
 }
 
 /**
- * 
+ * Main
  */
 function main() {
   try {
@@ -269,8 +269,6 @@ function main() {
       token: process.env.GITHUB_TOKEN
     }
     core.info(`Syncing all new action items in ${params.repo} from issue #${params.issueNumber}`);
-    const time = (new Date()).toTimeString();
-    core.info("time", time);
     core.info(`INFO: Fetching details of issue #${params.issueNumber}`);
     // Fetch issue details and sync with aggregate issue
     fetchIssue(params)
