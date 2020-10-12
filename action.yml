@@ -1,15 +1,18 @@
-name: 'GH-Issues-LtT'
-description: 'Extracts lists from a GitHub Issue and Transforms them to Tasks'
+name: 'Action Items Sync'
+description: 'Extract action items from multiple issues and aggregate them into 1'
 inputs:
-  user:
-    description: 'Issue Owner'
+  owner:
+    description: 'Repository Owner (User or Organization)'
     required: true
+
   repo:
     description: 'Repository To Monitor'
     required: true
+
   issueNumber:
     description: 'Created / Edited Issue Number'
     required: true
+
   aggregateIssueLabel:
     description: 'Label to Mark the Aggregate Issue'
     required: true

@@ -41,6 +41,7 @@ Copy and paste the workflow below to your workflow file.
 1. Use the latest version of `link-/gh-issues-ltt`
 2. Update the label used to identify issue you want to sync `<SYNC_LABEL>` with a label name of choice
 3. Update the **aggregateIssueLabel** `<IDENTIFYING_LABEL>` with the name of the identifying label you created in the pre-requisites
+4. If you are using this action for repositories owned by an organization, make sure to specify the organization name in the `owner` input
 
 ```
 name: Synchronize Action Items
@@ -58,7 +59,7 @@ jobs:
         uses: link-/gh-issues-ltt@v0.1.1-beta
         if: ${{ contains(github.event.issue.labels.*.name, '<SYNC_LABEL>') }}
         with:
-          user: "${{ github.actor }}"
+          owner: "${{ github.actor }}"
           repo: "${{ github.event.repository.name }}"
           issueNumber: "${{ github.event.issue.number }}"
           aggregateIssueLabel: "<IDENTIFYING_LABEL>"
@@ -76,6 +77,8 @@ jobs:
 This could be due to multiple problems. Revisit the `pre-requisites` and `workflow setup` sections.
 
 ## Changelog
+- v0.1.4-beta
+  - Support for repositories owned by organizations (public / private)
 - v0.1.3-beta
   - Variable aggregate issue label
   - Workflow is triggered by adding a sync label instead of open issue open / edit

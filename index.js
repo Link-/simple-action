@@ -28,19 +28,17 @@ function fetchIssue(params) {
   const query = {
     "query": `
 query {
-  user(login: "${params.user}") {
-    repository(name: "${params.repo}") {
-      issue(number: ${params.issueNumber}) {
-        number
-        id
-        databaseId
-        title
-        state
-        author {
-          login
-        }
-        body
+  repository(owner: "${params.owner}", name: "${params.repo}") {
+    issue(number: ${params.issueNumber}) {
+      number
+      id
+      databaseId
+      title
+      state
+      author {
+        login
       }
+      body
     }
   }
 }`
@@ -75,23 +73,21 @@ function fetchAggregateIssue(params) {
   const query = {
     "query": `
 query {
-  user(login: "${params.user}") {
-    repository(name: "${params.repo}") {
-      issues(first: 1, filterBy: {
-        labels: ["${params.aggregateIssueLabel}"],
-        states: OPEN
-      }) {
-        nodes {
-          number
-          id
-          databaseId
-          title
-          state
-          author {
-            login
-          }
-          body
+  repository(owner: "${params.owner}", name: "${params.repo}") {
+    issues(first: 1, filterBy: {
+      labels: ["${params.aggregateIssueLabel}"],
+      states: OPEN
+    }) {
+      nodes {
+        number
+        id
+        databaseId
+        title
+        state
+        author {
+          login
         }
+        body
       }
     }
   }
@@ -263,7 +259,7 @@ ${newActionItemsList}
 function main() {
   try {
     const params = {
-      user: core.getInput('user'),
+      owner: core.getInput('owner'),
       repo: core.getInput('repo'),
       issueNumber: core.getInput('issueNumber'),
       aggregateIssueLabel: core.getInput('aggregateIssueLabel'),

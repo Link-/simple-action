@@ -10,10 +10,10 @@ jobs:
     steps:
       - name: "Sync Ation Items"
         id: sync_action_items
-        uses: link-/gh-issues-ltt@v0.1.3-beta
+        uses: link-/gh-issues-ltt@v0.1.4-beta
         if: ${{ contains(github.event.issue.labels.*.name, 'sync_issue') }}
         with:
-          user: "${{ github.actor }}"
+          owner: "${{ github.actor }}"
           repo: "${{ github.event.repository.name }}"
           issueNumber: "${{ github.event.issue.number }}"
           aggregateIssueLabel: "gh-issues-ltt"
