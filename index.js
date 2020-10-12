@@ -198,7 +198,9 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
  * @param {*} aggregateIssue 
  */
 function syncAggregateIssue(params, actionItems, aggregateIssue) {
-  if (Object.entries(aggregateIssue).length === 0)
+  if (!aggregateIssue)
+    throw new Error('FATAL: Failed to retrieve aggregate issue.');
+  else if (aggregateIssue && Object.entries(aggregateIssue).length === 0)
     throw new Error('FATAL: Aggregate issue does not exist. Create it first and add the appropriate label.')
   const parsedAggregateIssue = marked.lexer(aggregateIssue.body);
   // Identify the heading and the list right below it that require change
@@ -268,7 +270,7 @@ function main() {
       aggregateIssueLabel: core.getInput('aggregateIssueLabel'),
       token: process.env.GITHUB_TOKEN
     }
-    core.info(`Syncing all new action items in ${params.repo} from issue #${params.issueNumber}`);
+    core.info(`INFO: Syncing all new action items in "${params.repo}" from issue #${params.issueNumber}`);
     core.info(`INFO: Fetching details of issue #${params.issueNumber}`);
     // Fetch issue details and sync with aggregate issue
     fetchIssue(params)
