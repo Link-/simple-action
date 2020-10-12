@@ -55,8 +55,8 @@ query {
       return res.data.user.repository.issue;
     })
     .catch(error => {
-      core.setOutput("FATAL: Could not fetch aggregate issue: ", error.message);
-      core.setOutput(error.stack);
+      core.info("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.info(error.stack);
     });
 }
 
@@ -106,8 +106,8 @@ query {
       return res.data.user.repository.issues.nodes[0];
     })
     .catch(error => {
-      core.setOutput("FATAL: Could not fetch aggregate issue: ", error.message);
-      core.setOutput(error.stack);
+      core.info("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.info(error.stack);
     });
 }
 
@@ -182,8 +182,8 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
       return res;
     })
     .catch(error => {
-      core.setOutput("FATAL: Could not update aggregate issue: ", error.message);
-      core.setOutput(error.stack);
+      core.info("FATAL: Could not update aggregate issue: ", error.message);
+      core.info(error.stack);
     });
 }
 
@@ -270,25 +270,25 @@ function main() {
     }
     core.info(`Syncing all new action items in ${params.repo} from issue #${params.issueNumber}`);
     const time = (new Date()).toTimeString();
-    core.setOutput("time", time);
-    core.setOutput(`INFO: Fetching details of issue #${params.issueNumber}`);
+    core.info("time", time);
+    core.info(`INFO: Fetching details of issue #${params.issueNumber}`);
     // Fetch issue details and sync with aggregate issue
     fetchIssue(params)
       .then((issue) => {
-        core.setOutput("INFO: Extracting action items");
+        core.info("INFO: Extracting action items");
         return extractActionItems(params, issue)
       })
       .then((actionItems) => {
-        core.setOutput("INFO: Fetching aggregate issue details");
+        core.info("INFO: Fetching aggregate issue details");
         return Promise.all([fetchAggregateIssue(params), actionItems]);
       })
       .then(([aggregateIssue, actionItems]) => {
-        core.setOutput("INFO: Looking for changes and syncing...");
+        core.info("INFO: Looking for changes and syncing...");
         return syncAggregateIssue(params, actionItems, aggregateIssue);
       })
       .catch(error => {
         core.debug(error);
-        core.setOutput(error.stack);
+        core.info(error.stack);
         core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
       })
       .finally(() => {
@@ -297,7 +297,7 @@ function main() {
       });
   } catch (error) {
     core.debug(error);
-    core.setOutput(error.stack);
+    core.info(error.stack);
     core.setFailed(error.message);
   }
 }
