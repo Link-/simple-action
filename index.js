@@ -56,6 +56,7 @@ query {
     })
     .catch(error => {
       core.setOutput("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.setOutput(error.stack);
     });
 }
 
@@ -106,6 +107,7 @@ query {
     })
     .catch(error => {
       core.setOutput("FATAL: Could not fetch aggregate issue: ", error.message);
+      core.setOutput(error.stack);
     });
 }
 
@@ -181,6 +183,7 @@ mutation ($updateIssueInput:UpdateIssueInput!) {
     })
     .catch(error => {
       core.setOutput("FATAL: Could not update aggregate issue: ", error.message);
+      core.setOutput(error.stack);
     });
 }
 
@@ -285,14 +288,16 @@ function main() {
       })
       .catch(error => {
         core.debug(error);
+        core.setOutput(error.stack);
         core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
       })
       .finally(() => {
-        core.info(`< 200 ${Date.now() - time}ms`);
+        core.info('< 200');
         core.setOutput(`INFO: Action items syncing completed successfully!`);
       });
   } catch (error) {
     core.debug(error);
+    core.setOutput(error.stack);
     core.setFailed(error.message);
   }
 }
