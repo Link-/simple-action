@@ -77,7 +77,7 @@ jobs:
 This could be due to multiple problems. Revisit the `pre-requisites` and `workflow setup` sections.
 
 ## Changelog
-- v0.1.4-beta
+- v0.1.5-beta
   - Support for repositories owned by organizations (public / private)
 - v0.1.3-beta
   - Variable aggregate issue label
