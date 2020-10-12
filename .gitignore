@@ -172,6 +172,10 @@ tags
 # Ignore all local history of files
 .history
 
+### Local ###
+local/
+local_testing.yml
+
 ### Secrets ###
 .secrets
 
