@@ -1,14 +1,14 @@
 {
-  "name": "gh-issues-ltt",
-  "version": "0.1.5",
-  "description": "Extracts lists from a GitHub Issue and Transforms them to Tasks",
-  "main": "index.js",
+  "name": "command-action",
+  "version": "0.1.0",
+  "description": "GitHub Action that implements the command design pattern",
+  "main": "cli.js",
   "scripts": {
-    "build": "ncc build index.js -o dist"
+    "build": "ncc build src/cli.js -o dist"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Link-/gh-issues-ltt.git"
+    "url": ""
   },
   "keywords": [
     "github-action"
@@ -16,13 +16,12 @@
   "author": "Link-",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Link-/gh-issues-ltt/issues"
+    "url": ""
   },
-  "homepage": "https://github.com/Link-/gh-issues-ltt#readme",
+  "homepage": "",
   "dependencies": {
     "@actions/core": "^1.2.5",
-    "@menadevs/objectron": "^0.1.14",
-    "marked": "^1.2.0",
-    "node-fetch": "^2.6.1"
+    "commander": "^7.2.0",
+    "ncc": "^0.3.6"
   }
 }

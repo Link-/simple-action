@@ -40,7 +40,7 @@ module.exports =
 /******/ 	// the startup function
 /******/ 	function startup() {
 /******/ 		// Load entry module and return exports
-/******/ 		return __webpack_require__(622);
+/******/ 		return __webpack_require__(323);
 /******/ 	};
 /******/
 /******/ 	// run startup
@@ -49,4949 +49,2486 @@ module.exports =
 /************************************************************************/
 /******/ ({
 
-/***/ 3:
-/***/ (function(module, __unusedexports, __webpack_require__) {
+/***/ 129:
+/***/ (function(module) {
 
-const {
-  noopTest,
-  edit,
-  merge
-} = __webpack_require__(781);
-
-/**
- * Block-Level Grammar
- */
-const block = {
-  newline: /^\n+/,
-  code: /^( {4}[^\n]+\n*)+/,
-  fences: /^ {0,3}(`{3,}(?=[^`\n]*\n)|~{3,})([^\n]*)\n(?:|([\s\S]*?)\n)(?: {0,3}\1[~`]* *(?:\n+|$)|$)/,
-  hr: /^ {0,3}((?:- *){3,}|(?:_ *){3,}|(?:\* *){3,})(?:\n+|$)/,
-  heading: /^ {0,3}(#{1,6}) +([^\n]*?)(?: +#+)? *(?:\n+|$)/,
-  blockquote: /^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/,
-  list: /^( {0,3})(bull) [\s\S]+?(?:hr|def|\n{2,}(?! )(?!\1bull )\n*|\s*$)/,
-  html: '^ {0,3}(?:' // optional indentation
-    + '<(script|pre|style)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n+|$)' // (1)
-    + '|comment[^\\n]*(\\n+|$)' // (2)
-    + '|<\\?[\\s\\S]*?(?:\\?>\\n*|$)' // (3)
-    + '|<![A-Z][\\s\\S]*?(?:>\\n*|$)' // (4)
-    + '|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>\\n*|$)' // (5)
-    + '|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:\\n{2,}|$)' // (6)
-    + '|<(?!script|pre|style)([a-z][\\w-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:\\n{2,}|$)' // (7) open tag
-    + '|</(?!script|pre|style)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:\\n{2,}|$)' // (7) closing tag
-    + ')',
-  def: /^ {0,3}\[(label)\]: *\n? *<?([^\s>]+)>?(?:(?: +\n? *| *\n *)(title))? *(?:\n+|$)/,
-  nptable: noopTest,
-  table: noopTest,
-  lheading: /^([^\n]+)\n {0,3}(=+|-+) *(?:\n+|$)/,
-  // regex template, placeholders will be replaced according to different paragraph
-  // interruption rules of commonmark and the original markdown spec:
-  _paragraph: /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html)[^\n]+)*)/,
-  text: /^[^\n]+/
-};
-
-block._label = /(?!\s*\])(?:\\[\[\]]|[^\[\]])+/;
-block._title = /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/;
-block.def = edit(block.def)
-  .replace('label', block._label)
-  .replace('title', block._title)
-  .getRegex();
-
-block.bullet = /(?:[*+-]|\d{1,9}[.)])/;
-block.item = /^( *)(bull) ?[^\n]*(?:\n(?!\1bull ?)[^\n]*)*/;
-block.item = edit(block.item, 'gm')
-  .replace(/bull/g, block.bullet)
-  .getRegex();
-
-block.list = edit(block.list)
-  .replace(/bull/g, block.bullet)
-  .replace('hr', '\\n+(?=\\1?(?:(?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$))')
-  .replace('def', '\\n+(?=' + block.def.source + ')')
-  .getRegex();
-
-block._tag = 'address|article|aside|base|basefont|blockquote|body|caption'
-  + '|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption'
-  + '|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe'
-  + '|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option'
-  + '|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr'
-  + '|track|ul';
-block._comment = /<!--(?!-?>)[\s\S]*?(?:-->|$)/;
-block.html = edit(block.html, 'i')
-  .replace('comment', block._comment)
-  .replace('tag', block._tag)
-  .replace('attribute', / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/)
-  .getRegex();
-
-block.paragraph = edit(block._paragraph)
-  .replace('hr', block.hr)
-  .replace('heading', ' {0,3}#{1,6} ')
-  .replace('|lheading', '') // setex headings don't interrupt commonmark paragraphs
-  .replace('blockquote', ' {0,3}>')
-  .replace('fences', ' {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n')
-  .replace('list', ' {0,3}(?:[*+-]|1[.)]) ') // only lists starting from 1 can interrupt
-  .replace('html', '</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|!--)')
-  .replace('tag', block._tag) // pars can be interrupted by type (6) html blocks
-  .getRegex();
-
-block.blockquote = edit(block.blockquote)
-  .replace('paragraph', block.paragraph)
-  .getRegex();
-
-/**
- * Normal Block Grammar
- */
-
-block.normal = merge({}, block);
-
-/**
- * GFM Block Grammar
- */
-
-block.gfm = merge({}, block.normal, {
-  nptable: '^ *([^|\\n ].*\\|.*)\\n' // Header
-    + ' {0,3}([-:]+ *\\|[-| :]*)' // Align
-    + '(?:\\n((?:(?!\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)', // Cells
-  table: '^ *\\|(.+)\\n' // Header
-    + ' {0,3}\\|?( *[-:]+[-| :]*)' // Align
-    + '(?:\\n *((?:(?!\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)' // Cells
-});
-
-block.gfm.nptable = edit(block.gfm.nptable)
-  .replace('hr', block.hr)
-  .replace('heading', ' {0,3}#{1,6} ')
-  .replace('blockquote', ' {0,3}>')
-  .replace('code', ' {4}[^\\n]')
-  .replace('fences', ' {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n')
-  .replace('list', ' {0,3}(?:[*+-]|1[.)]) ') // only lists starting from 1 can interrupt
-  .replace('html', '</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|!--)')
-  .replace('tag', block._tag) // tables can be interrupted by type (6) html blocks
-  .getRegex();
-
-block.gfm.table = edit(block.gfm.table)
-  .replace('hr', block.hr)
-  .replace('heading', ' {0,3}#{1,6} ')
-  .replace('blockquote', ' {0,3}>')
-  .replace('code', ' {4}[^\\n]')
-  .replace('fences', ' {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n')
-  .replace('list', ' {0,3}(?:[*+-]|1[.)]) ') // only lists starting from 1 can interrupt
-  .replace('html', '</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|!--)')
-  .replace('tag', block._tag) // tables can be interrupted by type (6) html blocks
-  .getRegex();
-
-/**
- * Pedantic grammar (original John Gruber's loose markdown specification)
- */
-
-block.pedantic = merge({}, block.normal, {
-  html: edit(
-    '^ *(?:comment *(?:\\n|\\s*$)'
-    + '|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)' // closed tag
-    + '|<tag(?:"[^"]*"|\'[^\']*\'|\\s[^\'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))')
-    .replace('comment', block._comment)
-    .replace(/tag/g, '(?!(?:'
-      + 'a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub'
-      + '|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)'
-      + '\\b)\\w+(?!:|[^\\w\\s@]*@)\\b')
-    .getRegex(),
-  def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/,
-  heading: /^ *(#{1,6}) *([^\n]+?) *(?:#+ *)?(?:\n+|$)/,
-  fences: noopTest, // fences not supported
-  paragraph: edit(block.normal._paragraph)
-    .replace('hr', block.hr)
-    .replace('heading', ' *#{1,6} *[^\n]')
-    .replace('lheading', block.lheading)
-    .replace('blockquote', ' {0,3}>')
-    .replace('|fences', '')
-    .replace('|list', '')
-    .replace('|html', '')
-    .getRegex()
-});
-
-/**
- * Inline-Level Grammar
- */
-const inline = {
-  escape: /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/,
-  autolink: /^<(scheme:[^\s\x00-\x1f<>]*|email)>/,
-  url: noopTest,
-  tag: '^comment'
-    + '|^</[a-zA-Z][\\w:-]*\\s*>' // self-closing tag
-    + '|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>' // open tag
-    + '|^<\\?[\\s\\S]*?\\?>' // processing instruction, e.g. <?php ?>
-    + '|^<![a-zA-Z]+\\s[\\s\\S]*?>' // declaration, e.g. <!DOCTYPE html>
-    + '|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>', // CDATA section
-  link: /^!?\[(label)\]\(\s*(href)(?:\s+(title))?\s*\)/,
-  reflink: /^!?\[(label)\]\[(?!\s*\])((?:\\[\[\]]?|[^\[\]\\])+)\]/,
-  nolink: /^!?\[(?!\s*\])((?:\[[^\[\]]*\]|\\[\[\]]|[^\[\]])*)\](?:\[\])?/,
-  reflinkSearch: 'reflink|nolink(?!\\()',
-  strong: {
-    start: /^(?:(\*\*(?=[*punctuation]))|\*\*)(?![\s])|__/, // (1) returns if starts w/ punctuation
-    middle: /^\*\*(?:(?:(?!overlapSkip)(?:[^*]|\\\*)|overlapSkip)|\*(?:(?!overlapSkip)(?:[^*]|\\\*)|overlapSkip)*?\*)+?\*\*$|^__(?![\s])((?:(?:(?!overlapSkip)(?:[^_]|\\_)|overlapSkip)|_(?:(?!overlapSkip)(?:[^_]|\\_)|overlapSkip)*?_)+?)__$/,
-    endAst: /[^punctuation\s]\*\*(?!\*)|[punctuation]\*\*(?!\*)(?:(?=[punctuation_\s]|$))/, // last char can't be punct, or final * must also be followed by punct (or endline)
-    endUnd: /[^\s]__(?!_)(?:(?=[punctuation*\s])|$)/ // last char can't be a space, and final _ must preceed punct or \s (or endline)
-  },
-  em: {
-    start: /^(?:(\*(?=[punctuation]))|\*)(?![*\s])|_/, // (1) returns if starts w/ punctuation
-    middle: /^\*(?:(?:(?!overlapSkip)(?:[^*]|\\\*)|overlapSkip)|\*(?:(?!overlapSkip)(?:[^*]|\\\*)|overlapSkip)*?\*)+?\*$|^_(?![_\s])(?:(?:(?!overlapSkip)(?:[^_]|\\_)|overlapSkip)|_(?:(?!overlapSkip)(?:[^_]|\\_)|overlapSkip)*?_)+?_$/,
-    endAst: /[^punctuation\s]\*(?!\*)|[punctuation]\*(?!\*)(?:(?=[punctuation_\s]|$))/, // last char can't be punct, or final * must also be followed by punct (or endline)
-    endUnd: /[^\s]_(?!_)(?:(?=[punctuation*\s])|$)/ // last char can't be a space, and final _ must preceed punct or \s (or endline)
-  },
-  code: /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/,
-  br: /^( {2,}|\\)\n(?!\s*$)/,
-  del: noopTest,
-  text: /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*]|\b_|$)|[^ ](?= {2,}\n)))/,
-  punctuation: /^([\s*punctuation])/
-};
-
-// list of punctuation marks from common mark spec
-// without * and _ to workaround cases with double emphasis
-inline._punctuation = '!"#$%&\'()+\\-.,/:;<=>?@\\[\\]`^{|}~';
-inline.punctuation = edit(inline.punctuation).replace(/punctuation/g, inline._punctuation).getRegex();
-
-// sequences em should skip over [title](link), `code`, <html>
-inline._blockSkip = '\\[[^\\]]*?\\]\\([^\\)]*?\\)|`[^`]*?`|<[^>]*?>';
-inline._overlapSkip = '__[^_]*?__|\\*\\*\\[^\\*\\]*?\\*\\*';
-
-inline._comment = edit(block._comment).replace('(?:-->|$)', '-->').getRegex();
-
-inline.em.start = edit(inline.em.start)
-  .replace(/punctuation/g, inline._punctuation)
-  .getRegex();
-
-inline.em.middle = edit(inline.em.middle)
-  .replace(/punctuation/g, inline._punctuation)
-  .replace(/overlapSkip/g, inline._overlapSkip)
-  .getRegex();
-
-inline.em.endAst = edit(inline.em.endAst, 'g')
-  .replace(/punctuation/g, inline._punctuation)
-  .getRegex();
-
-inline.em.endUnd = edit(inline.em.endUnd, 'g')
-  .replace(/punctuation/g, inline._punctuation)
-  .getRegex();
-
-inline.strong.start = edit(inline.strong.start)
-  .replace(/punctuation/g, inline._punctuation)
-  .getRegex();
-
-inline.strong.middle = edit(inline.strong.middle)
-  .replace(/punctuation/g, inline._punctuation)
-  .replace(/overlapSkip/g, inline._overlapSkip)
-  .getRegex();
-
-inline.strong.endAst = edit(inline.strong.endAst, 'g')
-  .replace(/punctuation/g, inline._punctuation)
-  .getRegex();
-
-inline.strong.endUnd = edit(inline.strong.endUnd, 'g')
-  .replace(/punctuation/g, inline._punctuation)
-  .getRegex();
-
-inline.blockSkip = edit(inline._blockSkip, 'g')
-  .getRegex();
-
-inline.overlapSkip = edit(inline._overlapSkip, 'g')
-  .getRegex();
-
-inline._escapes = /\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/g;
-
-inline._scheme = /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/;
-inline._email = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/;
-inline.autolink = edit(inline.autolink)
-  .replace('scheme', inline._scheme)
-  .replace('email', inline._email)
-  .getRegex();
-
-inline._attribute = /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/;
-
-inline.tag = edit(inline.tag)
-  .replace('comment', inline._comment)
-  .replace('attribute', inline._attribute)
-  .getRegex();
-
-inline._label = /(?:\[(?:\\.|[^\[\]\\])*\]|\\.|`[^`]*`|[^\[\]\\`])*?/;
-inline._href = /<(?:\\[<>]?|[^\s<>\\])*>|[^\s\x00-\x1f]*/;
-inline._title = /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/;
-
-inline.link = edit(inline.link)
-  .replace('label', inline._label)
-  .replace('href', inline._href)
-  .replace('title', inline._title)
-  .getRegex();
-
-inline.reflink = edit(inline.reflink)
-  .replace('label', inline._label)
-  .getRegex();
-
-inline.reflinkSearch = edit(inline.reflinkSearch, 'g')
-  .replace('reflink', inline.reflink)
-  .replace('nolink', inline.nolink)
-  .getRegex();
-
-/**
- * Normal Inline Grammar
- */
-
-inline.normal = merge({}, inline);
-
-/**
- * Pedantic Inline Grammar
- */
-
-inline.pedantic = merge({}, inline.normal, {
-  strong: {
-    start: /^__|\*\*/,
-    middle: /^__(?=\S)([\s\S]*?\S)__(?!_)|^\*\*(?=\S)([\s\S]*?\S)\*\*(?!\*)/,
-    endAst: /\*\*(?!\*)/g,
-    endUnd: /__(?!_)/g
-  },
-  em: {
-    start: /^_|\*/,
-    middle: /^()\*(?=\S)([\s\S]*?\S)\*(?!\*)|^_(?=\S)([\s\S]*?\S)_(?!_)/,
-    endAst: /\*(?!\*)/g,
-    endUnd: /_(?!_)/g
-  },
-  link: edit(/^!?\[(label)\]\((.*?)\)/)
-    .replace('label', inline._label)
-    .getRegex(),
-  reflink: edit(/^!?\[(label)\]\s*\[([^\]]*)\]/)
-    .replace('label', inline._label)
-    .getRegex()
-});
-
-/**
- * GFM Inline Grammar
- */
-
-inline.gfm = merge({}, inline.normal, {
-  escape: edit(inline.escape).replace('])', '~|])').getRegex(),
-  _extended_email: /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/,
-  url: /^((?:ftp|https?):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/,
-  _backpedal: /(?:[^?!.,:;*_~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_~)]+(?!$))+/,
-  del: /^~+(?=\S)([\s\S]*?\S)~+/,
-  text: /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*~]|\b_|https?:\/\/|ftp:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))/
-});
-
-inline.gfm.url = edit(inline.gfm.url, 'i')
-  .replace('email', inline.gfm._extended_email)
-  .getRegex();
-/**
- * GFM + Line Breaks Inline Grammar
- */
-
-inline.breaks = merge({}, inline.gfm, {
-  br: edit(inline.br).replace('{2,}', '*').getRegex(),
-  text: edit(inline.gfm.text)
-    .replace('\\b_', '\\b_| {2,}\\n')
-    .replace(/\{2,\}/g, '*')
-    .getRegex()
-});
-
-module.exports = {
-  block,
-  inline
-};
-
+module.exports = require("child_process");
 
 /***/ }),
 
-/***/ 30:
-/***/ (function(module, __unusedexports, __webpack_require__) {
+/***/ 272:
+/***/ (function(module) {
 
-const Lexer = __webpack_require__(889);
-const Parser = __webpack_require__(34);
-const Tokenizer = __webpack_require__(541);
-const Renderer = __webpack_require__(702);
-const TextRenderer = __webpack_require__(516);
-const Slugger = __webpack_require__(880);
-const {
-  merge,
-  checkSanitizeDeprecation,
-  escape
-} = __webpack_require__(781);
-const {
-  getDefaults,
-  changeDefaults,
-  defaults
-} = __webpack_require__(44);
+module.exports = {"name":"command-action","version":"0.1.0","description":"GitHub Action that implements the command design pattern","main":"cli.js","scripts":{"build":"ncc build src/cli.js -o dist"},"repository":{"type":"git","url":""},"keywords":["github-action"],"author":"Link-","license":"MIT","bugs":{"url":""},"homepage":"","dependencies":{"@actions/core":"^1.2.5","commander":"^7.2.0","ncc":"^0.3.6"}};
+
+/***/ }),
+
+/***/ 323:
+/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
+
+const meta = __webpack_require__(272);
+const { Command } = __webpack_require__(346);
+const Invoker = __webpack_require__(456);
+
+const program = new Command();
+
+program
+  .version(meta.version)
+  .option('-d, --debug', 'Output debugging information')
+  .requiredOption('-c, --command <command name>', 'Command to execute')
+  .option('-t, --token <token>', 'Personal Access Token or GITHUB_TOKEN')
+  .option('-i, --issue-number <number>', 'Issue number')
+  .option('-o, --org <org_name>', 'Organisation name')
+  .option('-r, --repo <repo_name>', 'Repository name')
+  .parse();
+  
+/**
+ * await won’t work in the top-level code so we have to wrap it with an
+ * anonymous async function and invoke it
+ *
+ * More details: https://javascript.info/async-await
+ */
+(async () => {
+  try {
+    const options = program.opts();
+    const invoker = new Invoker(options);
+    const result = await invoker.executeCommand(options);
+    console.log(`✨ OUTPUT: ${result}`);
+  } catch (Error) {
+    console.error(`⚠️  ERROR: ${Error.message}`);
+  }
+})()
+
+/***/ }),
+
+/***/ 346:
+/***/ (function(module, exports, __webpack_require__) {
 
 /**
- * Marked
+ * Module dependencies.
  */
-function marked(src, opt, callback) {
-  // throw error in case of non string input
-  if (typeof src === 'undefined' || src === null) {
-    throw new Error('marked(): input parameter is undefined or null');
+
+const EventEmitter = __webpack_require__(614).EventEmitter;
+const childProcess = __webpack_require__(129);
+const path = __webpack_require__(622);
+const fs = __webpack_require__(747);
+
+// @ts-check
+
+// Although this is a class, methods are static in style to allow override using subclass or just functions.
+class Help {
+  constructor() {
+    this.helpWidth = undefined;
+    this.sortSubcommands = false;
+    this.sortOptions = false;
   }
-  if (typeof src !== 'string') {
-    throw new Error('marked(): input parameter is of type '
-      + Object.prototype.toString.call(src) + ', string expected');
-  }
 
-  if (typeof opt === 'function') {
-    callback = opt;
-    opt = null;
-  }
+  /**
+   * Get an array of the visible subcommands. Includes a placeholder for the implicit help command, if there is one.
+   *
+   * @param {Command} cmd
+   * @returns {Command[]}
+   */
 
-  opt = merge({}, marked.defaults, opt || {});
-  checkSanitizeDeprecation(opt);
-
-  if (callback) {
-    const highlight = opt.highlight;
-    let tokens;
-
-    try {
-      tokens = Lexer.lex(src, opt);
-    } catch (e) {
-      return callback(e);
+  visibleCommands(cmd) {
+    const visibleCommands = cmd.commands.filter(cmd => !cmd._hidden);
+    if (cmd._hasImplicitHelpCommand()) {
+      // Create a command matching the implicit help command.
+      const args = cmd._helpCommandnameAndArgs.split(/ +/);
+      const helpCommand = cmd.createCommand(args.shift())
+        .helpOption(false);
+      helpCommand.description(cmd._helpCommandDescription);
+      helpCommand._parseExpectedArgs(args);
+      visibleCommands.push(helpCommand);
     }
+    if (this.sortSubcommands) {
+      visibleCommands.sort((a, b) => {
+        return a.name().localeCompare(b.name());
+      });
+    }
+    return visibleCommands;
+  }
 
-    const done = function(err) {
-      let out;
+  /**
+   * Get an array of the visible options. Includes a placeholder for the implicit help option, if there is one.
+   *
+   * @param {Command} cmd
+   * @returns {Option[]}
+   */
 
-      if (!err) {
-        try {
-          out = Parser.parse(tokens, opt);
-        } catch (e) {
-          err = e;
-        }
+  visibleOptions(cmd) {
+    const visibleOptions = cmd.options.filter((option) => !option.hidden);
+    // Implicit help
+    const showShortHelpFlag = cmd._hasHelpOption && cmd._helpShortFlag && !cmd._findOption(cmd._helpShortFlag);
+    const showLongHelpFlag = cmd._hasHelpOption && !cmd._findOption(cmd._helpLongFlag);
+    if (showShortHelpFlag || showLongHelpFlag) {
+      let helpOption;
+      if (!showShortHelpFlag) {
+        helpOption = cmd.createOption(cmd._helpLongFlag, cmd._helpDescription);
+      } else if (!showLongHelpFlag) {
+        helpOption = cmd.createOption(cmd._helpShortFlag, cmd._helpDescription);
+      } else {
+        helpOption = cmd.createOption(cmd._helpFlags, cmd._helpDescription);
       }
+      visibleOptions.push(helpOption);
+    }
+    if (this.sortOptions) {
+      const getSortKey = (option) => {
+        // WYSIWYG for order displayed in help with short before long, no special handling for negated.
+        return option.short ? option.short.replace(/^-/, '') : option.long.replace(/^--/, '');
+      };
+      visibleOptions.sort((a, b) => {
+        return getSortKey(a).localeCompare(getSortKey(b));
+      });
+    }
+    return visibleOptions;
+  }
 
-      opt.highlight = highlight;
+  /**
+   * Get an array of the arguments which have descriptions.
+   *
+   * @param {Command} cmd
+   * @returns {{ term: string, description:string }[]}
+   */
 
-      return err
-        ? callback(err)
-        : callback(null, out);
+  visibleArguments(cmd) {
+    if (cmd._argsDescription && cmd._args.length) {
+      return cmd._args.map((argument) => {
+        return { term: argument.name, description: cmd._argsDescription[argument.name] || '' };
+      }, 0);
+    }
+    return [];
+  }
+
+  /**
+   * Get the command term to show in the list of subcommands.
+   *
+   * @param {Command} cmd
+   * @returns {string}
+   */
+
+  subcommandTerm(cmd) {
+    // Legacy. Ignores custom usage string, and nested commands.
+    const args = cmd._args.map(arg => humanReadableArgName(arg)).join(' ');
+    return cmd._name +
+      (cmd._aliases[0] ? '|' + cmd._aliases[0] : '') +
+      (cmd.options.length ? ' [options]' : '') + // simplistic check for non-help option
+      (args ? ' ' + args : '');
+  }
+
+  /**
+   * Get the option term to show in the list of options.
+   *
+   * @param {Option} option
+   * @returns {string}
+   */
+
+  optionTerm(option) {
+    return option.flags;
+  }
+
+  /**
+   * Get the longest command term length.
+   *
+   * @param {Command} cmd
+   * @param {Help} helper
+   * @returns {number}
+   */
+
+  longestSubcommandTermLength(cmd, helper) {
+    return helper.visibleCommands(cmd).reduce((max, command) => {
+      return Math.max(max, helper.subcommandTerm(command).length);
+    }, 0);
+  };
+
+  /**
+   * Get the longest option term length.
+   *
+   * @param {Command} cmd
+   * @param {Help} helper
+   * @returns {number}
+   */
+
+  longestOptionTermLength(cmd, helper) {
+    return helper.visibleOptions(cmd).reduce((max, option) => {
+      return Math.max(max, helper.optionTerm(option).length);
+    }, 0);
+  };
+
+  /**
+   * Get the longest argument term length.
+   *
+   * @param {Command} cmd
+   * @param {Help} helper
+   * @returns {number}
+   */
+
+  longestArgumentTermLength(cmd, helper) {
+    return helper.visibleArguments(cmd).reduce((max, argument) => {
+      return Math.max(max, argument.term.length);
+    }, 0);
+  };
+
+  /**
+   * Get the command usage to be displayed at the top of the built-in help.
+   *
+   * @param {Command} cmd
+   * @returns {string}
+   */
+
+  commandUsage(cmd) {
+    // Usage
+    let cmdName = cmd._name;
+    if (cmd._aliases[0]) {
+      cmdName = cmdName + '|' + cmd._aliases[0];
+    }
+    let parentCmdNames = '';
+    for (let parentCmd = cmd.parent; parentCmd; parentCmd = parentCmd.parent) {
+      parentCmdNames = parentCmd.name() + ' ' + parentCmdNames;
+    }
+    return parentCmdNames + cmdName + ' ' + cmd.usage();
+  }
+
+  /**
+   * Get the description for the command.
+   *
+   * @param {Command} cmd
+   * @returns {string}
+   */
+
+  commandDescription(cmd) {
+    // @ts-ignore: overloaded return type
+    return cmd.description();
+  }
+
+  /**
+   * Get the command description to show in the list of subcommands.
+   *
+   * @param {Command} cmd
+   * @returns {string}
+   */
+
+  subcommandDescription(cmd) {
+    // @ts-ignore: overloaded return type
+    return cmd.description();
+  }
+
+  /**
+   * Get the option description to show in the list of options.
+   *
+   * @param {Option} option
+   * @return {string}
+   */
+
+  optionDescription(option) {
+    if (option.negate) {
+      return option.description;
+    }
+    const extraInfo = [];
+    if (option.argChoices) {
+      extraInfo.push(
+        // use stringify to match the display of the default value
+        `choices: ${option.argChoices.map((choice) => JSON.stringify(choice)).join(', ')}`);
+    }
+    if (option.defaultValue !== undefined) {
+      extraInfo.push(`default: ${option.defaultValueDescription || JSON.stringify(option.defaultValue)}`);
+    }
+    if (extraInfo.length > 0) {
+      return `${option.description} (${extraInfo.join(', ')})`;
+    }
+    return option.description;
+  };
+
+  /**
+   * Generate the built-in help text.
+   *
+   * @param {Command} cmd
+   * @param {Help} helper
+   * @returns {string}
+   */
+
+  formatHelp(cmd, helper) {
+    const termWidth = helper.padWidth(cmd, helper);
+    const helpWidth = helper.helpWidth || 80;
+    const itemIndentWidth = 2;
+    const itemSeparatorWidth = 2; // between term and description
+    function formatItem(term, description) {
+      if (description) {
+        const fullText = `${term.padEnd(termWidth + itemSeparatorWidth)}${description}`;
+        return helper.wrap(fullText, helpWidth - itemIndentWidth, termWidth + itemSeparatorWidth);
+      }
+      return term;
     };
-
-    if (!highlight || highlight.length < 3) {
-      return done();
+    function formatList(textArray) {
+      return textArray.join('\n').replace(/^/gm, ' '.repeat(itemIndentWidth));
     }
 
-    delete opt.highlight;
+    // Usage
+    let output = [`Usage: ${helper.commandUsage(cmd)}`, ''];
 
-    if (!tokens.length) return done();
+    // Description
+    const commandDescription = helper.commandDescription(cmd);
+    if (commandDescription.length > 0) {
+      output = output.concat([commandDescription, '']);
+    }
 
-    let pending = 0;
-    marked.walkTokens(tokens, function(token) {
-      if (token.type === 'code') {
-        pending++;
-        setTimeout(() => {
-          highlight(token.text, token.lang, function(err, code) {
-            if (err) {
-              return done(err);
-            }
-            if (code != null && code !== token.text) {
-              token.text = code;
-              token.escaped = true;
-            }
-
-            pending--;
-            if (pending === 0) {
-              done();
-            }
-          });
-        }, 0);
-      }
+    // Arguments
+    const argumentList = helper.visibleArguments(cmd).map((argument) => {
+      return formatItem(argument.term, argument.description);
     });
-
-    if (pending === 0) {
-      done();
+    if (argumentList.length > 0) {
+      output = output.concat(['Arguments:', formatList(argumentList), '']);
     }
 
-    return;
+    // Options
+    const optionList = helper.visibleOptions(cmd).map((option) => {
+      return formatItem(helper.optionTerm(option), helper.optionDescription(option));
+    });
+    if (optionList.length > 0) {
+      output = output.concat(['Options:', formatList(optionList), '']);
+    }
+
+    // Commands
+    const commandList = helper.visibleCommands(cmd).map((cmd) => {
+      return formatItem(helper.subcommandTerm(cmd), helper.subcommandDescription(cmd));
+    });
+    if (commandList.length > 0) {
+      output = output.concat(['Commands:', formatList(commandList), '']);
+    }
+
+    return output.join('\n');
   }
 
-  try {
-    const tokens = Lexer.lex(src, opt);
-    if (opt.walkTokens) {
-      marked.walkTokens(tokens, opt.walkTokens);
-    }
-    return Parser.parse(tokens, opt);
-  } catch (e) {
-    e.message += '\nPlease report this to https://github.com/markedjs/marked.';
-    if (opt.silent) {
-      return '<p>An error occurred:</p><pre>'
-        + escape(e.message + '', true)
-        + '</pre>';
-    }
-    throw e;
+  /**
+   * Calculate the pad width from the maximum term length.
+   *
+   * @param {Command} cmd
+   * @param {Help} helper
+   * @returns {number}
+   */
+
+  padWidth(cmd, helper) {
+    return Math.max(
+      helper.longestOptionTermLength(cmd, helper),
+      helper.longestSubcommandTermLength(cmd, helper),
+      helper.longestArgumentTermLength(cmd, helper)
+    );
+  };
+
+  /**
+   * Wrap the given string to width characters per line, with lines after the first indented.
+   * Do not wrap if insufficient room for wrapping (minColumnWidth), or string is manually formatted.
+   *
+   * @param {string} str
+   * @param {number} width
+   * @param {number} indent
+   * @param {number} [minColumnWidth=40]
+   * @return {string}
+   *
+   */
+
+  wrap(str, width, indent, minColumnWidth = 40) {
+    // Detect manually wrapped and indented strings by searching for line breaks
+    // followed by multiple spaces/tabs.
+    if (str.match(/[\n]\s+/)) return str;
+    // Do not wrap if not enough room for a wrapped column of text (as could end up with a word per line).
+    const columnWidth = width - indent;
+    if (columnWidth < minColumnWidth) return str;
+
+    const leadingStr = str.substr(0, indent);
+    const columnText = str.substr(indent);
+
+    const indentString = ' '.repeat(indent);
+    const regex = new RegExp('.{1,' + (columnWidth - 1) + '}([\\s\u200B]|$)|[^\\s\u200B]+?([\\s\u200B]|$)', 'g');
+    const lines = columnText.match(regex) || [];
+    return leadingStr + lines.map((line, i) => {
+      if (line.slice(-1) === '\n') {
+        line = line.slice(0, line.length - 1);
+      }
+      return ((i > 0) ? indentString : '') + line.trimRight();
+    }).join('\n');
   }
 }
 
-/**
- * Options
- */
+class Option {
+  /**
+   * Initialize a new `Option` with the given `flags` and `description`.
+   *
+   * @param {string} flags
+   * @param {string} [description]
+   */
 
-marked.options =
-marked.setOptions = function(opt) {
-  merge(marked.defaults, opt);
-  changeDefaults(marked.defaults);
-  return marked;
-};
+  constructor(flags, description) {
+    this.flags = flags;
+    this.description = description || '';
 
-marked.getDefaults = getDefaults;
-
-marked.defaults = defaults;
-
-/**
- * Use Extension
- */
-
-marked.use = function(extension) {
-  const opts = merge({}, extension);
-  if (extension.renderer) {
-    const renderer = marked.defaults.renderer || new Renderer();
-    for (const prop in extension.renderer) {
-      const prevRenderer = renderer[prop];
-      renderer[prop] = (...args) => {
-        let ret = extension.renderer[prop].apply(renderer, args);
-        if (ret === false) {
-          ret = prevRenderer.apply(renderer, args);
-        }
-        return ret;
-      };
+    this.required = flags.includes('<'); // A value must be supplied when the option is specified.
+    this.optional = flags.includes('['); // A value is optional when the option is specified.
+    // variadic test ignores <value,...> et al which might be used to describe custom splitting of single argument
+    this.variadic = /\w\.\.\.[>\]]$/.test(flags); // The option can take multiple values.
+    this.mandatory = false; // The option must have a value after parsing, which usually means it must be specified on command line.
+    const optionFlags = _parseOptionFlags(flags);
+    this.short = optionFlags.shortFlag;
+    this.long = optionFlags.longFlag;
+    this.negate = false;
+    if (this.long) {
+      this.negate = this.long.startsWith('--no-');
     }
-    opts.renderer = renderer;
+    this.defaultValue = undefined;
+    this.defaultValueDescription = undefined;
+    this.parseArg = undefined;
+    this.hidden = false;
+    this.argChoices = undefined;
   }
-  if (extension.tokenizer) {
-    const tokenizer = marked.defaults.tokenizer || new Tokenizer();
-    for (const prop in extension.tokenizer) {
-      const prevTokenizer = tokenizer[prop];
-      tokenizer[prop] = (...args) => {
-        let ret = extension.tokenizer[prop].apply(tokenizer, args);
-        if (ret === false) {
-          ret = prevTokenizer.apply(tokenizer, args);
-        }
-        return ret;
-      };
+
+  /**
+   * Set the default value, and optionally supply the description to be displayed in the help.
+   *
+   * @param {any} value
+   * @param {string} [description]
+   * @return {Option}
+   */
+
+  default(value, description) {
+    this.defaultValue = value;
+    this.defaultValueDescription = description;
+    return this;
+  };
+
+  /**
+   * Set the custom handler for processing CLI option arguments into option values.
+   *
+   * @param {Function} [fn]
+   * @return {Option}
+   */
+
+  argParser(fn) {
+    this.parseArg = fn;
+    return this;
+  };
+
+  /**
+   * Whether the option is mandatory and must have a value after parsing.
+   *
+   * @param {boolean} [mandatory=true]
+   * @return {Option}
+   */
+
+  makeOptionMandatory(mandatory = true) {
+    this.mandatory = !!mandatory;
+    return this;
+  };
+
+  /**
+   * Hide option in help.
+   *
+   * @param {boolean} [hide=true]
+   * @return {Option}
+   */
+
+  hideHelp(hide = true) {
+    this.hidden = !!hide;
+    return this;
+  };
+
+  /**
+   * @api private
+   */
+
+  _concatValue(value, previous) {
+    if (previous === this.defaultValue || !Array.isArray(previous)) {
+      return [value];
     }
-    opts.tokenizer = tokenizer;
+
+    return previous.concat(value);
   }
-  if (extension.walkTokens) {
-    const walkTokens = marked.defaults.walkTokens;
-    opts.walkTokens = (token) => {
-      extension.walkTokens(token);
-      if (walkTokens) {
-        walkTokens(token);
+
+  /**
+   * Only allow option value to be one of choices.
+   *
+   * @param {string[]} values
+   * @return {Option}
+   */
+
+  choices(values) {
+    this.argChoices = values;
+    this.parseArg = (arg, previous) => {
+      if (!values.includes(arg)) {
+        throw new InvalidOptionArgumentError(`Allowed choices are ${values.join(', ')}.`);
       }
+      if (this.variadic) {
+        return this._concatValue(arg, previous);
+      }
+      return arg;
     };
-  }
-  marked.setOptions(opts);
-};
-
-/**
- * Run callback for every token
- */
-
-marked.walkTokens = function(tokens, callback) {
-  for (const token of tokens) {
-    callback(token);
-    switch (token.type) {
-      case 'table': {
-        for (const cell of token.tokens.header) {
-          marked.walkTokens(cell, callback);
-        }
-        for (const row of token.tokens.cells) {
-          for (const cell of row) {
-            marked.walkTokens(cell, callback);
-          }
-        }
-        break;
-      }
-      case 'list': {
-        marked.walkTokens(token.items, callback);
-        break;
-      }
-      default: {
-        if (token.tokens) {
-          marked.walkTokens(token.tokens, callback);
-        }
-      }
-    }
-  }
-};
-
-/**
- * Parse Inline
- */
-marked.parseInline = function(src, opt) {
-  // throw error in case of non string input
-  if (typeof src === 'undefined' || src === null) {
-    throw new Error('marked.parseInline(): input parameter is undefined or null');
-  }
-  if (typeof src !== 'string') {
-    throw new Error('marked.parseInline(): input parameter is of type '
-      + Object.prototype.toString.call(src) + ', string expected');
-  }
-
-  opt = merge({}, marked.defaults, opt || {});
-  checkSanitizeDeprecation(opt);
-
-  try {
-    const tokens = Lexer.lexInline(src, opt);
-    if (opt.walkTokens) {
-      marked.walkTokens(tokens, opt.walkTokens);
-    }
-    return Parser.parseInline(tokens, opt);
-  } catch (e) {
-    e.message += '\nPlease report this to https://github.com/markedjs/marked.';
-    if (opt.silent) {
-      return '<p>An error occurred:</p><pre>'
-        + escape(e.message + '', true)
-        + '</pre>';
-    }
-    throw e;
-  }
-};
-
-/**
- * Expose
- */
-
-marked.Parser = Parser;
-marked.parser = Parser.parse;
-
-marked.Renderer = Renderer;
-marked.TextRenderer = TextRenderer;
-
-marked.Lexer = Lexer;
-marked.lexer = Lexer.lex;
-
-marked.Tokenizer = Tokenizer;
-
-marked.Slugger = Slugger;
-
-marked.parse = marked;
-
-module.exports = marked;
-
-
-/***/ }),
-
-/***/ 34:
-/***/ (function(module, __unusedexports, __webpack_require__) {
-
-const Renderer = __webpack_require__(702);
-const TextRenderer = __webpack_require__(516);
-const Slugger = __webpack_require__(880);
-const { defaults } = __webpack_require__(44);
-const {
-  unescape
-} = __webpack_require__(781);
-
-/**
- * Parsing & Compiling
- */
-module.exports = class Parser {
-  constructor(options) {
-    this.options = options || defaults;
-    this.options.renderer = this.options.renderer || new Renderer();
-    this.renderer = this.options.renderer;
-    this.renderer.options = this.options;
-    this.textRenderer = new TextRenderer();
-    this.slugger = new Slugger();
-  }
+    return this;
+  };
 
   /**
-   * Static Parse Method
+   * Return option name.
+   *
+   * @return {string}
    */
-  static parse(tokens, options) {
-    const parser = new Parser(options);
-    return parser.parse(tokens);
-  }
 
-  /**
-   * Static Parse Inline Method
-   */
-  static parseInline(tokens, options) {
-    const parser = new Parser(options);
-    return parser.parseInline(tokens);
-  }
-
-  /**
-   * Parse Loop
-   */
-  parse(tokens, top = true) {
-    let out = '',
-      i,
-      j,
-      k,
-      l2,
-      l3,
-      row,
-      cell,
-      header,
-      body,
-      token,
-      ordered,
-      start,
-      loose,
-      itemBody,
-      item,
-      checked,
-      task,
-      checkbox;
-
-    const l = tokens.length;
-    for (i = 0; i < l; i++) {
-      token = tokens[i];
-      switch (token.type) {
-        case 'space': {
-          continue;
-        }
-        case 'hr': {
-          out += this.renderer.hr();
-          continue;
-        }
-        case 'heading': {
-          out += this.renderer.heading(
-            this.parseInline(token.tokens),
-            token.depth,
-            unescape(this.parseInline(token.tokens, this.textRenderer)),
-            this.slugger);
-          continue;
-        }
-        case 'code': {
-          out += this.renderer.code(token.text,
-            token.lang,
-            token.escaped);
-          continue;
-        }
-        case 'table': {
-          header = '';
-
-          // header
-          cell = '';
-          l2 = token.header.length;
-          for (j = 0; j < l2; j++) {
-            cell += this.renderer.tablecell(
-              this.parseInline(token.tokens.header[j]),
-              { header: true, align: token.align[j] }
-            );
-          }
-          header += this.renderer.tablerow(cell);
-
-          body = '';
-          l2 = token.cells.length;
-          for (j = 0; j < l2; j++) {
-            row = token.tokens.cells[j];
-
-            cell = '';
-            l3 = row.length;
-            for (k = 0; k < l3; k++) {
-              cell += this.renderer.tablecell(
-                this.parseInline(row[k]),
-                { header: false, align: token.align[k] }
-              );
-            }
-
-            body += this.renderer.tablerow(cell);
-          }
-          out += this.renderer.table(header, body);
-          continue;
-        }
-        case 'blockquote': {
-          body = this.parse(token.tokens);
-          out += this.renderer.blockquote(body);
-          continue;
-        }
-        case 'list': {
-          ordered = token.ordered;
-          start = token.start;
-          loose = token.loose;
-          l2 = token.items.length;
-
-          body = '';
-          for (j = 0; j < l2; j++) {
-            item = token.items[j];
-            checked = item.checked;
-            task = item.task;
-
-            itemBody = '';
-            if (item.task) {
-              checkbox = this.renderer.checkbox(checked);
-              if (loose) {
-                if (item.tokens.length > 0 && item.tokens[0].type === 'text') {
-                  item.tokens[0].text = checkbox + ' ' + item.tokens[0].text;
-                  if (item.tokens[0].tokens && item.tokens[0].tokens.length > 0 && item.tokens[0].tokens[0].type === 'text') {
-                    item.tokens[0].tokens[0].text = checkbox + ' ' + item.tokens[0].tokens[0].text;
-                  }
-                } else {
-                  item.tokens.unshift({
-                    type: 'text',
-                    text: checkbox
-                  });
-                }
-              } else {
-                itemBody += checkbox;
-              }
-            }
-
-            itemBody += this.parse(item.tokens, loose);
-            body += this.renderer.listitem(itemBody, task, checked);
-          }
-
-          out += this.renderer.list(body, ordered, start);
-          continue;
-        }
-        case 'html': {
-          // TODO parse inline content if parameter markdown=1
-          out += this.renderer.html(token.text);
-          continue;
-        }
-        case 'paragraph': {
-          out += this.renderer.paragraph(this.parseInline(token.tokens));
-          continue;
-        }
-        case 'text': {
-          body = token.tokens ? this.parseInline(token.tokens) : token.text;
-          while (i + 1 < l && tokens[i + 1].type === 'text') {
-            token = tokens[++i];
-            body += '\n' + (token.tokens ? this.parseInline(token.tokens) : token.text);
-          }
-          out += top ? this.renderer.paragraph(body) : body;
-          continue;
-        }
-        default: {
-          const errMsg = 'Token with "' + token.type + '" type was not found.';
-          if (this.options.silent) {
-            console.error(errMsg);
-            return;
-          } else {
-            throw new Error(errMsg);
-          }
-        }
-      }
+  name() {
+    if (this.long) {
+      return this.long.replace(/^--/, '');
     }
-
-    return out;
-  }
+    return this.short.replace(/^-/, '');
+  };
 
   /**
-   * Parse Inline Tokens
+   * Return option name, in a camelcase format that can be used
+   * as a object attribute key.
+   *
+   * @return {string}
+   * @api private
    */
-  parseInline(tokens, renderer) {
-    renderer = renderer || this.renderer;
-    let out = '',
-      i,
-      token;
 
-    const l = tokens.length;
-    for (i = 0; i < l; i++) {
-      token = tokens[i];
-      switch (token.type) {
-        case 'escape': {
-          out += renderer.text(token.text);
-          break;
-        }
-        case 'html': {
-          out += renderer.html(token.text);
-          break;
-        }
-        case 'link': {
-          out += renderer.link(token.href, token.title, this.parseInline(token.tokens, renderer));
-          break;
-        }
-        case 'image': {
-          out += renderer.image(token.href, token.title, token.text);
-          break;
-        }
-        case 'strong': {
-          out += renderer.strong(this.parseInline(token.tokens, renderer));
-          break;
-        }
-        case 'em': {
-          out += renderer.em(this.parseInline(token.tokens, renderer));
-          break;
-        }
-        case 'codespan': {
-          out += renderer.codespan(token.text);
-          break;
-        }
-        case 'br': {
-          out += renderer.br();
-          break;
-        }
-        case 'del': {
-          out += renderer.del(this.parseInline(token.tokens, renderer));
-          break;
-        }
-        case 'text': {
-          out += renderer.text(token.text);
-          break;
-        }
-        default: {
-          const errMsg = 'Token with "' + token.type + '" type was not found.';
-          if (this.options.silent) {
-            console.error(errMsg);
-            return;
-          } else {
-            throw new Error(errMsg);
-          }
-        }
-      }
-    }
-    return out;
-  }
-};
+  attributeName() {
+    return camelcase(this.name().replace(/^no-/, ''));
+  };
 
+  /**
+   * Check if `arg` matches the short or long flag.
+   *
+   * @param {string} arg
+   * @return {boolean}
+   * @api private
+   */
 
-/***/ }),
-
-/***/ 44:
-/***/ (function(module) {
-
-function getDefaults() {
-  return {
-    baseUrl: null,
-    breaks: false,
-    gfm: true,
-    headerIds: true,
-    headerPrefix: '',
-    highlight: null,
-    langPrefix: 'language-',
-    mangle: true,
-    pedantic: false,
-    renderer: null,
-    sanitize: false,
-    sanitizer: null,
-    silent: false,
-    smartLists: false,
-    smartypants: false,
-    tokenizer: null,
-    walkTokens: null,
-    xhtml: false
+  is(arg) {
+    return this.short === arg || this.long === arg;
   };
 }
 
-function changeDefaults(newDefaults) {
-  module.exports.defaults = newDefaults;
-}
-
-module.exports = {
-  defaults: getDefaults(),
-  getDefaults,
-  changeDefaults
-};
-
-
-/***/ }),
-
-/***/ 87:
-/***/ (function(module) {
-
-module.exports = require("os");
-
-/***/ }),
-
-/***/ 110:
-/***/ (function(module) {
-
-module.exports = eval("require")("encoding");
-
-
-/***/ }),
-
-/***/ 211:
-/***/ (function(module) {
-
-module.exports = require("https");
-
-/***/ }),
-
-/***/ 215:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const os = __importStar(__webpack_require__(87));
 /**
- * Commands
- *
- * Command Format:
- *   ::name key=value,key=value::message
- *
- * Examples:
- *   ::warning::This is the message
- *   ::set-env name=MY_VAR::some value
+ * CommanderError class
+ * @class
  */
-function issueCommand(command, properties, message) {
-    const cmd = new Command(command, properties, message);
-    process.stdout.write(cmd.toString() + os.EOL);
+class CommanderError extends Error {
+  /**
+   * Constructs the CommanderError class
+   * @param {number} exitCode suggested exit code which could be used with process.exit
+   * @param {string} code an id string representing the error
+   * @param {string} message human-readable description of the error
+   * @constructor
+   */
+  constructor(exitCode, code, message) {
+    super(message);
+    // properly capture stack trace in Node.js
+    Error.captureStackTrace(this, this.constructor);
+    this.name = this.constructor.name;
+    this.code = code;
+    this.exitCode = exitCode;
+    this.nestedError = undefined;
+  }
 }
-exports.issueCommand = issueCommand;
-function issue(name, message = '') {
-    issueCommand(name, {}, message);
+
+/**
+ * InvalidOptionArgumentError class
+ * @class
+ */
+class InvalidOptionArgumentError extends CommanderError {
+  /**
+   * Constructs the InvalidOptionArgumentError class
+   * @param {string} [message] explanation of why argument is invalid
+   * @constructor
+   */
+  constructor(message) {
+    super(1, 'commander.invalidOptionArgument', message);
+    // properly capture stack trace in Node.js
+    Error.captureStackTrace(this, this.constructor);
+    this.name = this.constructor.name;
+  }
 }
-exports.issue = issue;
-const CMD_STRING = '::';
-class Command {
-    constructor(command, properties, message) {
-        if (!command) {
-            command = 'missing.command';
-        }
-        this.command = command;
-        this.properties = properties;
-        this.message = message;
+
+class Command extends EventEmitter {
+  /**
+   * Initialize a new `Command`.
+   *
+   * @param {string} [name]
+   */
+
+  constructor(name) {
+    super();
+    this.commands = [];
+    this.options = [];
+    this.parent = null;
+    this._allowUnknownOption = false;
+    this._allowExcessArguments = true;
+    this._args = [];
+    this.rawArgs = null;
+    this._scriptPath = null;
+    this._name = name || '';
+    this._optionValues = {};
+    this._storeOptionsAsProperties = false;
+    this._actionResults = [];
+    this._actionHandler = null;
+    this._executableHandler = false;
+    this._executableFile = null; // custom name for executable
+    this._defaultCommandName = null;
+    this._exitCallback = null;
+    this._aliases = [];
+    this._combineFlagAndOptionalValue = true;
+    this._description = '';
+    this._argsDescription = undefined;
+    this._enablePositionalOptions = false;
+    this._passThroughOptions = false;
+
+    // see .configureOutput() for docs
+    this._outputConfiguration = {
+      writeOut: (str) => process.stdout.write(str),
+      writeErr: (str) => process.stderr.write(str),
+      getOutHelpWidth: () => process.stdout.isTTY ? process.stdout.columns : undefined,
+      getErrHelpWidth: () => process.stderr.isTTY ? process.stderr.columns : undefined,
+      outputError: (str, write) => write(str)
+    };
+
+    this._hidden = false;
+    this._hasHelpOption = true;
+    this._helpFlags = '-h, --help';
+    this._helpDescription = 'display help for command';
+    this._helpShortFlag = '-h';
+    this._helpLongFlag = '--help';
+    this._addImplicitHelpCommand = undefined; // Deliberately undefined, not decided whether true or false
+    this._helpCommandName = 'help';
+    this._helpCommandnameAndArgs = 'help [command]';
+    this._helpCommandDescription = 'display help for command';
+    this._helpConfiguration = {};
+  }
+
+  /**
+   * Define a command.
+   *
+   * There are two styles of command: pay attention to where to put the description.
+   *
+   * Examples:
+   *
+   *      // Command implemented using action handler (description is supplied separately to `.command`)
+   *      program
+   *        .command('clone <source> [destination]')
+   *        .description('clone a repository into a newly created directory')
+   *        .action((source, destination) => {
+   *          console.log('clone command called');
+   *        });
+   *
+   *      // Command implemented using separate executable file (description is second parameter to `.command`)
+   *      program
+   *        .command('start <service>', 'start named service')
+   *        .command('stop [service]', 'stop named service, or all if no name supplied');
+   *
+   * @param {string} nameAndArgs - command name and arguments, args are `<required>` or `[optional]` and last may also be `variadic...`
+   * @param {Object|string} [actionOptsOrExecDesc] - configuration options (for action), or description (for executable)
+   * @param {Object} [execOpts] - configuration options (for executable)
+   * @return {Command} returns new command for action handler, or `this` for executable command
+   */
+
+  command(nameAndArgs, actionOptsOrExecDesc, execOpts) {
+    let desc = actionOptsOrExecDesc;
+    let opts = execOpts;
+    if (typeof desc === 'object' && desc !== null) {
+      opts = desc;
+      desc = null;
     }
-    toString() {
-        let cmdStr = CMD_STRING + this.command;
-        if (this.properties && Object.keys(this.properties).length > 0) {
-            cmdStr += ' ';
-            let first = true;
-            for (const key in this.properties) {
-                if (this.properties.hasOwnProperty(key)) {
-                    const val = this.properties[key];
-                    if (val) {
-                        if (first) {
-                            first = false;
-                        }
-                        else {
-                            cmdStr += ',';
-                        }
-                        cmdStr += `${key}=${escapeProperty(val)}`;
-                    }
-                }
+    opts = opts || {};
+    const args = nameAndArgs.split(/ +/);
+    const cmd = this.createCommand(args.shift());
+
+    if (desc) {
+      cmd.description(desc);
+      cmd._executableHandler = true;
+    }
+    if (opts.isDefault) this._defaultCommandName = cmd._name;
+
+    cmd._outputConfiguration = this._outputConfiguration;
+
+    cmd._hidden = !!(opts.noHelp || opts.hidden); // noHelp is deprecated old name for hidden
+    cmd._hasHelpOption = this._hasHelpOption;
+    cmd._helpFlags = this._helpFlags;
+    cmd._helpDescription = this._helpDescription;
+    cmd._helpShortFlag = this._helpShortFlag;
+    cmd._helpLongFlag = this._helpLongFlag;
+    cmd._helpCommandName = this._helpCommandName;
+    cmd._helpCommandnameAndArgs = this._helpCommandnameAndArgs;
+    cmd._helpCommandDescription = this._helpCommandDescription;
+    cmd._helpConfiguration = this._helpConfiguration;
+    cmd._exitCallback = this._exitCallback;
+    cmd._storeOptionsAsProperties = this._storeOptionsAsProperties;
+    cmd._combineFlagAndOptionalValue = this._combineFlagAndOptionalValue;
+    cmd._allowExcessArguments = this._allowExcessArguments;
+    cmd._enablePositionalOptions = this._enablePositionalOptions;
+
+    cmd._executableFile = opts.executableFile || null; // Custom name for executable file, set missing to null to match constructor
+    this.commands.push(cmd);
+    cmd._parseExpectedArgs(args);
+    cmd.parent = this;
+
+    if (desc) return this;
+    return cmd;
+  };
+
+  /**
+   * Factory routine to create a new unattached command.
+   *
+   * See .command() for creating an attached subcommand, which uses this routine to
+   * create the command. You can override createCommand to customise subcommands.
+   *
+   * @param {string} [name]
+   * @return {Command} new command
+   */
+
+  createCommand(name) {
+    return new Command(name);
+  };
+
+  /**
+   * You can customise the help with a subclass of Help by overriding createHelp,
+   * or by overriding Help properties using configureHelp().
+   *
+   * @return {Help}
+   */
+
+  createHelp() {
+    return Object.assign(new Help(), this.configureHelp());
+  };
+
+  /**
+   * You can customise the help by overriding Help properties using configureHelp(),
+   * or with a subclass of Help by overriding createHelp().
+   *
+   * @param {Object} [configuration] - configuration options
+   * @return {Command|Object} `this` command for chaining, or stored configuration
+   */
+
+  configureHelp(configuration) {
+    if (configuration === undefined) return this._helpConfiguration;
+
+    this._helpConfiguration = configuration;
+    return this;
+  }
+
+  /**
+   * The default output goes to stdout and stderr. You can customise this for special
+   * applications. You can also customise the display of errors by overriding outputError.
+   *
+   * The configuration properties are all functions:
+   *
+   *    // functions to change where being written, stdout and stderr
+   *    writeOut(str)
+   *    writeErr(str)
+   *    // matching functions to specify width for wrapping help
+   *    getOutHelpWidth()
+   *    getErrHelpWidth()
+   *    // functions based on what is being written out
+   *    outputError(str, write) // used for displaying errors, and not used for displaying help
+   *
+   * @param {Object} [configuration] - configuration options
+   * @return {Command|Object} `this` command for chaining, or stored configuration
+   */
+
+  configureOutput(configuration) {
+    if (configuration === undefined) return this._outputConfiguration;
+
+    Object.assign(this._outputConfiguration, configuration);
+    return this;
+  }
+
+  /**
+   * Add a prepared subcommand.
+   *
+   * See .command() for creating an attached subcommand which inherits settings from its parent.
+   *
+   * @param {Command} cmd - new subcommand
+   * @param {Object} [opts] - configuration options
+   * @return {Command} `this` command for chaining
+   */
+
+  addCommand(cmd, opts) {
+    if (!cmd._name) throw new Error('Command passed to .addCommand() must have a name');
+
+    // To keep things simple, block automatic name generation for deeply nested executables.
+    // Fail fast and detect when adding rather than later when parsing.
+    function checkExplicitNames(commandArray) {
+      commandArray.forEach((cmd) => {
+        if (cmd._executableHandler && !cmd._executableFile) {
+          throw new Error(`Must specify executableFile for deeply nested executable: ${cmd.name()}`);
+        }
+        checkExplicitNames(cmd.commands);
+      });
+    }
+    checkExplicitNames(cmd.commands);
+
+    opts = opts || {};
+    if (opts.isDefault) this._defaultCommandName = cmd._name;
+    if (opts.noHelp || opts.hidden) cmd._hidden = true; // modifying passed command due to existing implementation
+
+    this.commands.push(cmd);
+    cmd.parent = this;
+    return this;
+  };
+
+  /**
+   * Define argument syntax for the command.
+   */
+
+  arguments(desc) {
+    return this._parseExpectedArgs(desc.split(/ +/));
+  };
+
+  /**
+   * Override default decision whether to add implicit help command.
+   *
+   *    addHelpCommand() // force on
+   *    addHelpCommand(false); // force off
+   *    addHelpCommand('help [cmd]', 'display help for [cmd]'); // force on with custom details
+   *
+   * @return {Command} `this` command for chaining
+   */
+
+  addHelpCommand(enableOrNameAndArgs, description) {
+    if (enableOrNameAndArgs === false) {
+      this._addImplicitHelpCommand = false;
+    } else {
+      this._addImplicitHelpCommand = true;
+      if (typeof enableOrNameAndArgs === 'string') {
+        this._helpCommandName = enableOrNameAndArgs.split(' ')[0];
+        this._helpCommandnameAndArgs = enableOrNameAndArgs;
+      }
+      this._helpCommandDescription = description || this._helpCommandDescription;
+    }
+    return this;
+  };
+
+  /**
+   * @return {boolean}
+   * @api private
+   */
+
+  _hasImplicitHelpCommand() {
+    if (this._addImplicitHelpCommand === undefined) {
+      return this.commands.length && !this._actionHandler && !this._findCommand('help');
+    }
+    return this._addImplicitHelpCommand;
+  };
+
+  /**
+   * Parse expected `args`.
+   *
+   * For example `["[type]"]` becomes `[{ required: false, name: 'type' }]`.
+   *
+   * @param {Array} args
+   * @return {Command} `this` command for chaining
+   * @api private
+   */
+
+  _parseExpectedArgs(args) {
+    if (!args.length) return;
+    args.forEach((arg) => {
+      const argDetails = {
+        required: false,
+        name: '',
+        variadic: false
+      };
+
+      switch (arg[0]) {
+        case '<':
+          argDetails.required = true;
+          argDetails.name = arg.slice(1, -1);
+          break;
+        case '[':
+          argDetails.name = arg.slice(1, -1);
+          break;
+      }
+
+      if (argDetails.name.length > 3 && argDetails.name.slice(-3) === '...') {
+        argDetails.variadic = true;
+        argDetails.name = argDetails.name.slice(0, -3);
+      }
+      if (argDetails.name) {
+        this._args.push(argDetails);
+      }
+    });
+    this._args.forEach((arg, i) => {
+      if (arg.variadic && i < this._args.length - 1) {
+        throw new Error(`only the last argument can be variadic '${arg.name}'`);
+      }
+    });
+    return this;
+  };
+
+  /**
+   * Register callback to use as replacement for calling process.exit.
+   *
+   * @param {Function} [fn] optional callback which will be passed a CommanderError, defaults to throwing
+   * @return {Command} `this` command for chaining
+   */
+
+  exitOverride(fn) {
+    if (fn) {
+      this._exitCallback = fn;
+    } else {
+      this._exitCallback = (err) => {
+        if (err.code !== 'commander.executeSubCommandAsync') {
+          throw err;
+        } else {
+          // Async callback from spawn events, not useful to throw.
+        }
+      };
+    }
+    return this;
+  };
+
+  /**
+   * Call process.exit, and _exitCallback if defined.
+   *
+   * @param {number} exitCode exit code for using with process.exit
+   * @param {string} code an id string representing the error
+   * @param {string} message human-readable description of the error
+   * @return never
+   * @api private
+   */
+
+  _exit(exitCode, code, message) {
+    if (this._exitCallback) {
+      this._exitCallback(new CommanderError(exitCode, code, message));
+      // Expecting this line is not reached.
+    }
+    process.exit(exitCode);
+  };
+
+  /**
+   * Register callback `fn` for the command.
+   *
+   * Examples:
+   *
+   *      program
+   *        .command('help')
+   *        .description('display verbose help')
+   *        .action(function() {
+   *           // output help here
+   *        });
+   *
+   * @param {Function} fn
+   * @return {Command} `this` command for chaining
+   */
+
+  action(fn) {
+    const listener = (args) => {
+      // The .action callback takes an extra parameter which is the command or options.
+      const expectedArgsCount = this._args.length;
+      const actionArgs = args.slice(0, expectedArgsCount);
+      if (this._storeOptionsAsProperties) {
+        actionArgs[expectedArgsCount] = this; // backwards compatible "options"
+      } else {
+        actionArgs[expectedArgsCount] = this.opts();
+      }
+      actionArgs.push(this);
+
+      const actionResult = fn.apply(this, actionArgs);
+      // Remember result in case it is async. Assume parseAsync getting called on root.
+      let rootCommand = this;
+      while (rootCommand.parent) {
+        rootCommand = rootCommand.parent;
+      }
+      rootCommand._actionResults.push(actionResult);
+    };
+    this._actionHandler = listener;
+    return this;
+  };
+
+  /**
+   * Factory routine to create a new unattached option.
+   *
+   * See .option() for creating an attached option, which uses this routine to
+   * create the option. You can override createOption to return a custom option.
+   *
+   * @param {string} flags
+   * @param {string} [description]
+   * @return {Option} new option
+   */
+
+  createOption(flags, description) {
+    return new Option(flags, description);
+  };
+
+  /**
+   * Add an option.
+   *
+   * @param {Option} option
+   * @return {Command} `this` command for chaining
+   */
+  addOption(option) {
+    const oname = option.name();
+    const name = option.attributeName();
+
+    let defaultValue = option.defaultValue;
+
+    // preassign default value for --no-*, [optional], <required>, or plain flag if boolean value
+    if (option.negate || option.optional || option.required || typeof defaultValue === 'boolean') {
+      // when --no-foo we make sure default is true, unless a --foo option is already defined
+      if (option.negate) {
+        const positiveLongFlag = option.long.replace(/^--no-/, '--');
+        defaultValue = this._findOption(positiveLongFlag) ? this._getOptionValue(name) : true;
+      }
+      // preassign only if we have a default
+      if (defaultValue !== undefined) {
+        this._setOptionValue(name, defaultValue);
+      }
+    }
+
+    // register the option
+    this.options.push(option);
+
+    // when it's passed assign the value
+    // and conditionally invoke the callback
+    this.on('option:' + oname, (val) => {
+      const oldValue = this._getOptionValue(name);
+
+      // custom processing
+      if (val !== null && option.parseArg) {
+        try {
+          val = option.parseArg(val, oldValue === undefined ? defaultValue : oldValue);
+        } catch (err) {
+          if (err.code === 'commander.invalidOptionArgument') {
+            const message = `error: option '${option.flags}' argument '${val}' is invalid. ${err.message}`;
+            this._displayError(err.exitCode, err.code, message);
+          }
+          throw err;
+        }
+      } else if (val !== null && option.variadic) {
+        val = option._concatValue(val, oldValue);
+      }
+
+      // unassigned or boolean value
+      if (typeof oldValue === 'boolean' || typeof oldValue === 'undefined') {
+        // if no value, negate false, and we have a default, then use it!
+        if (val == null) {
+          this._setOptionValue(name, option.negate
+            ? false
+            : defaultValue || true);
+        } else {
+          this._setOptionValue(name, val);
+        }
+      } else if (val !== null) {
+        // reassign
+        this._setOptionValue(name, option.negate ? false : val);
+      }
+    });
+
+    return this;
+  }
+
+  /**
+   * Internal implementation shared by .option() and .requiredOption()
+   *
+   * @api private
+   */
+  _optionEx(config, flags, description, fn, defaultValue) {
+    const option = this.createOption(flags, description);
+    option.makeOptionMandatory(!!config.mandatory);
+    if (typeof fn === 'function') {
+      option.default(defaultValue).argParser(fn);
+    } else if (fn instanceof RegExp) {
+      // deprecated
+      const regex = fn;
+      fn = (val, def) => {
+        const m = regex.exec(val);
+        return m ? m[0] : def;
+      };
+      option.default(defaultValue).argParser(fn);
+    } else {
+      option.default(fn);
+    }
+
+    return this.addOption(option);
+  }
+
+  /**
+   * Define option with `flags`, `description` and optional
+   * coercion `fn`.
+   *
+   * The `flags` string contains the short and/or long flags,
+   * separated by comma, a pipe or space. The following are all valid
+   * all will output this way when `--help` is used.
+   *
+   *    "-p, --pepper"
+   *    "-p|--pepper"
+   *    "-p --pepper"
+   *
+   * Examples:
+   *
+   *     // simple boolean defaulting to undefined
+   *     program.option('-p, --pepper', 'add pepper');
+   *
+   *     program.pepper
+   *     // => undefined
+   *
+   *     --pepper
+   *     program.pepper
+   *     // => true
+   *
+   *     // simple boolean defaulting to true (unless non-negated option is also defined)
+   *     program.option('-C, --no-cheese', 'remove cheese');
+   *
+   *     program.cheese
+   *     // => true
+   *
+   *     --no-cheese
+   *     program.cheese
+   *     // => false
+   *
+   *     // required argument
+   *     program.option('-C, --chdir <path>', 'change the working directory');
+   *
+   *     --chdir /tmp
+   *     program.chdir
+   *     // => "/tmp"
+   *
+   *     // optional argument
+   *     program.option('-c, --cheese [type]', 'add cheese [marble]');
+   *
+   * @param {string} flags
+   * @param {string} [description]
+   * @param {Function|*} [fn] - custom option processing function or default value
+   * @param {*} [defaultValue]
+   * @return {Command} `this` command for chaining
+   */
+
+  option(flags, description, fn, defaultValue) {
+    return this._optionEx({}, flags, description, fn, defaultValue);
+  };
+
+  /**
+  * Add a required option which must have a value after parsing. This usually means
+  * the option must be specified on the command line. (Otherwise the same as .option().)
+  *
+  * The `flags` string contains the short and/or long flags, separated by comma, a pipe or space.
+  *
+  * @param {string} flags
+  * @param {string} [description]
+  * @param {Function|*} [fn] - custom option processing function or default value
+  * @param {*} [defaultValue]
+  * @return {Command} `this` command for chaining
+  */
+
+  requiredOption(flags, description, fn, defaultValue) {
+    return this._optionEx({ mandatory: true }, flags, description, fn, defaultValue);
+  };
+
+  /**
+   * Alter parsing of short flags with optional values.
+   *
+   * Examples:
+   *
+   *    // for `.option('-f,--flag [value]'):
+   *    .combineFlagAndOptionalValue(true)  // `-f80` is treated like `--flag=80`, this is the default behaviour
+   *    .combineFlagAndOptionalValue(false) // `-fb` is treated like `-f -b`
+   *
+   * @param {Boolean} [combine=true] - if `true` or omitted, an optional value can be specified directly after the flag.
+   */
+  combineFlagAndOptionalValue(combine = true) {
+    this._combineFlagAndOptionalValue = !!combine;
+    return this;
+  };
+
+  /**
+   * Allow unknown options on the command line.
+   *
+   * @param {Boolean} [allowUnknown=true] - if `true` or omitted, no error will be thrown
+   * for unknown options.
+   */
+  allowUnknownOption(allowUnknown = true) {
+    this._allowUnknownOption = !!allowUnknown;
+    return this;
+  };
+
+  /**
+   * Allow excess command-arguments on the command line. Pass false to make excess arguments an error.
+   *
+   * @param {Boolean} [allowExcess=true] - if `true` or omitted, no error will be thrown
+   * for excess arguments.
+   */
+  allowExcessArguments(allowExcess = true) {
+    this._allowExcessArguments = !!allowExcess;
+    return this;
+  };
+
+  /**
+   * Enable positional options. Positional means global options are specified before subcommands which lets
+   * subcommands reuse the same option names, and also enables subcommands to turn on passThroughOptions.
+   * The default behaviour is non-positional and global options may appear anywhere on the command line.
+   *
+   * @param {Boolean} [positional=true]
+   */
+  enablePositionalOptions(positional = true) {
+    this._enablePositionalOptions = !!positional;
+    return this;
+  };
+
+  /**
+   * Pass through options that come after command-arguments rather than treat them as command-options,
+   * so actual command-options come before command-arguments. Turning this on for a subcommand requires
+   * positional options to have been enabled on the program (parent commands).
+   * The default behaviour is non-positional and options may appear before or after command-arguments.
+   *
+   * @param {Boolean} [passThrough=true]
+   * for unknown options.
+   */
+  passThroughOptions(passThrough = true) {
+    this._passThroughOptions = !!passThrough;
+    if (!!this.parent && passThrough && !this.parent._enablePositionalOptions) {
+      throw new Error('passThroughOptions can not be used without turning on enablePositionalOptions for parent command(s)');
+    }
+    return this;
+  };
+
+  /**
+    * Whether to store option values as properties on command object,
+    * or store separately (specify false). In both cases the option values can be accessed using .opts().
+    *
+    * @param {boolean} [storeAsProperties=true]
+    * @return {Command} `this` command for chaining
+    */
+
+  storeOptionsAsProperties(storeAsProperties = true) {
+    this._storeOptionsAsProperties = !!storeAsProperties;
+    if (this.options.length) {
+      throw new Error('call .storeOptionsAsProperties() before adding options');
+    }
+    return this;
+  };
+
+  /**
+   * Store option value
+   *
+   * @param {string} key
+   * @param {Object} value
+   * @api private
+   */
+
+  _setOptionValue(key, value) {
+    if (this._storeOptionsAsProperties) {
+      this[key] = value;
+    } else {
+      this._optionValues[key] = value;
+    }
+  };
+
+  /**
+   * Retrieve option value
+   *
+   * @param {string} key
+   * @return {Object} value
+   * @api private
+   */
+
+  _getOptionValue(key) {
+    if (this._storeOptionsAsProperties) {
+      return this[key];
+    }
+    return this._optionValues[key];
+  };
+
+  /**
+   * Parse `argv`, setting options and invoking commands when defined.
+   *
+   * The default expectation is that the arguments are from node and have the application as argv[0]
+   * and the script being run in argv[1], with user parameters after that.
+   *
+   * Examples:
+   *
+   *      program.parse(process.argv);
+   *      program.parse(); // implicitly use process.argv and auto-detect node vs electron conventions
+   *      program.parse(my-args, { from: 'user' }); // just user supplied arguments, nothing special about argv[0]
+   *
+   * @param {string[]} [argv] - optional, defaults to process.argv
+   * @param {Object} [parseOptions] - optionally specify style of options with from: node/user/electron
+   * @param {string} [parseOptions.from] - where the args are from: 'node', 'user', 'electron'
+   * @return {Command} `this` command for chaining
+   */
+
+  parse(argv, parseOptions) {
+    if (argv !== undefined && !Array.isArray(argv)) {
+      throw new Error('first parameter to parse must be array or undefined');
+    }
+    parseOptions = parseOptions || {};
+
+    // Default to using process.argv
+    if (argv === undefined) {
+      argv = process.argv;
+      // @ts-ignore: unknown property
+      if (process.versions && process.versions.electron) {
+        parseOptions.from = 'electron';
+      }
+    }
+    this.rawArgs = argv.slice();
+
+    // make it a little easier for callers by supporting various argv conventions
+    let userArgs;
+    switch (parseOptions.from) {
+      case undefined:
+      case 'node':
+        this._scriptPath = argv[1];
+        userArgs = argv.slice(2);
+        break;
+      case 'electron':
+        // @ts-ignore: unknown property
+        if (process.defaultApp) {
+          this._scriptPath = argv[1];
+          userArgs = argv.slice(2);
+        } else {
+          userArgs = argv.slice(1);
+        }
+        break;
+      case 'user':
+        userArgs = argv.slice(0);
+        break;
+      default:
+        throw new Error(`unexpected parse option { from: '${parseOptions.from}' }`);
+    }
+    if (!this._scriptPath && require.main) {
+      this._scriptPath = require.main.filename;
+    }
+
+    // Guess name, used in usage in help.
+    this._name = this._name || (this._scriptPath && path.basename(this._scriptPath, path.extname(this._scriptPath)));
+
+    // Let's go!
+    this._parseCommand([], userArgs);
+
+    return this;
+  };
+
+  /**
+   * Parse `argv`, setting options and invoking commands when defined.
+   *
+   * Use parseAsync instead of parse if any of your action handlers are async. Returns a Promise.
+   *
+   * The default expectation is that the arguments are from node and have the application as argv[0]
+   * and the script being run in argv[1], with user parameters after that.
+   *
+   * Examples:
+   *
+   *      program.parseAsync(process.argv);
+   *      program.parseAsync(); // implicitly use process.argv and auto-detect node vs electron conventions
+   *      program.parseAsync(my-args, { from: 'user' }); // just user supplied arguments, nothing special about argv[0]
+   *
+   * @param {string[]} [argv]
+   * @param {Object} [parseOptions]
+   * @param {string} parseOptions.from - where the args are from: 'node', 'user', 'electron'
+   * @return {Promise}
+   */
+
+  parseAsync(argv, parseOptions) {
+    this.parse(argv, parseOptions);
+    return Promise.all(this._actionResults).then(() => this);
+  };
+
+  /**
+   * Execute a sub-command executable.
+   *
+   * @api private
+   */
+
+  _executeSubCommand(subcommand, args) {
+    args = args.slice();
+    let launchWithNode = false; // Use node for source targets so do not need to get permissions correct, and on Windows.
+    const sourceExt = ['.js', '.ts', '.tsx', '.mjs', '.cjs'];
+
+    // Not checking for help first. Unlikely to have mandatory and executable, and can't robustly test for help flags in external command.
+    this._checkForMissingMandatoryOptions();
+
+    // Want the entry script as the reference for command name and directory for searching for other files.
+    let scriptPath = this._scriptPath;
+    // Fallback in case not set, due to how Command created or called.
+    if (!scriptPath && require.main) {
+      scriptPath = require.main.filename;
+    }
+
+    let baseDir;
+    try {
+      const resolvedLink = fs.realpathSync(scriptPath);
+      baseDir = path.dirname(resolvedLink);
+    } catch (e) {
+      baseDir = '.'; // dummy, probably not going to find executable!
+    }
+
+    // name of the subcommand, like `pm-install`
+    let bin = path.basename(scriptPath, path.extname(scriptPath)) + '-' + subcommand._name;
+    if (subcommand._executableFile) {
+      bin = subcommand._executableFile;
+    }
+
+    const localBin = path.join(baseDir, bin);
+    if (fs.existsSync(localBin)) {
+      // prefer local `./<bin>` to bin in the $PATH
+      bin = localBin;
+    } else {
+      // Look for source files.
+      sourceExt.forEach((ext) => {
+        if (fs.existsSync(`${localBin}${ext}`)) {
+          bin = `${localBin}${ext}`;
+        }
+      });
+    }
+    launchWithNode = sourceExt.includes(path.extname(bin));
+
+    let proc;
+    if (process.platform !== 'win32') {
+      if (launchWithNode) {
+        args.unshift(bin);
+        // add executable arguments to spawn
+        args = incrementNodeInspectorPort(process.execArgv).concat(args);
+
+        proc = childProcess.spawn(process.argv[0], args, { stdio: 'inherit' });
+      } else {
+        proc = childProcess.spawn(bin, args, { stdio: 'inherit' });
+      }
+    } else {
+      args.unshift(bin);
+      // add executable arguments to spawn
+      args = incrementNodeInspectorPort(process.execArgv).concat(args);
+      proc = childProcess.spawn(process.execPath, args, { stdio: 'inherit' });
+    }
+
+    const signals = ['SIGUSR1', 'SIGUSR2', 'SIGTERM', 'SIGINT', 'SIGHUP'];
+    signals.forEach((signal) => {
+      // @ts-ignore
+      process.on(signal, () => {
+        if (proc.killed === false && proc.exitCode === null) {
+          proc.kill(signal);
+        }
+      });
+    });
+
+    // By default terminate process when spawned process terminates.
+    // Suppressing the exit if exitCallback defined is a bit messy and of limited use, but does allow process to stay running!
+    const exitCallback = this._exitCallback;
+    if (!exitCallback) {
+      proc.on('close', process.exit.bind(process));
+    } else {
+      proc.on('close', () => {
+        exitCallback(new CommanderError(process.exitCode || 0, 'commander.executeSubCommandAsync', '(close)'));
+      });
+    }
+    proc.on('error', (err) => {
+      // @ts-ignore
+      if (err.code === 'ENOENT') {
+        const executableMissing = `'${bin}' does not exist
+ - if '${subcommand._name}' is not meant to be an executable command, remove description parameter from '.command()' and use '.description()' instead
+ - if the default executable name is not suitable, use the executableFile option to supply a custom name`;
+        throw new Error(executableMissing);
+      // @ts-ignore
+      } else if (err.code === 'EACCES') {
+        throw new Error(`'${bin}' not executable`);
+      }
+      if (!exitCallback) {
+        process.exit(1);
+      } else {
+        const wrappedError = new CommanderError(1, 'commander.executeSubCommandAsync', '(error)');
+        wrappedError.nestedError = err;
+        exitCallback(wrappedError);
+      }
+    });
+
+    // Store the reference to the child process
+    this.runningCommand = proc;
+  };
+
+  /**
+   * @api private
+   */
+  _dispatchSubcommand(commandName, operands, unknown) {
+    const subCommand = this._findCommand(commandName);
+    if (!subCommand) this.help({ error: true });
+
+    if (subCommand._executableHandler) {
+      this._executeSubCommand(subCommand, operands.concat(unknown));
+    } else {
+      subCommand._parseCommand(operands, unknown);
+    }
+  };
+
+  /**
+   * Process arguments in context of this command.
+   *
+   * @api private
+   */
+
+  _parseCommand(operands, unknown) {
+    const parsed = this.parseOptions(unknown);
+    operands = operands.concat(parsed.operands);
+    unknown = parsed.unknown;
+    this.args = operands.concat(unknown);
+
+    if (operands && this._findCommand(operands[0])) {
+      this._dispatchSubcommand(operands[0], operands.slice(1), unknown);
+    } else if (this._hasImplicitHelpCommand() && operands[0] === this._helpCommandName) {
+      if (operands.length === 1) {
+        this.help();
+      } else {
+        this._dispatchSubcommand(operands[1], [], [this._helpLongFlag]);
+      }
+    } else if (this._defaultCommandName) {
+      outputHelpIfRequested(this, unknown); // Run the help for default command from parent rather than passing to default command
+      this._dispatchSubcommand(this._defaultCommandName, operands, unknown);
+    } else {
+      if (this.commands.length && this.args.length === 0 && !this._actionHandler && !this._defaultCommandName) {
+        // probably missing subcommand and no handler, user needs help
+        this.help({ error: true });
+      }
+
+      outputHelpIfRequested(this, parsed.unknown);
+      this._checkForMissingMandatoryOptions();
+
+      // We do not always call this check to avoid masking a "better" error, like unknown command.
+      const checkForUnknownOptions = () => {
+        if (parsed.unknown.length > 0) {
+          this.unknownOption(parsed.unknown[0]);
+        }
+      };
+
+      const commandEvent = `command:${this.name()}`;
+      if (this._actionHandler) {
+        checkForUnknownOptions();
+        // Check expected arguments and collect variadic together.
+        const args = this.args.slice();
+        this._args.forEach((arg, i) => {
+          if (arg.required && args[i] == null) {
+            this.missingArgument(arg.name);
+          } else if (arg.variadic) {
+            args[i] = args.splice(i);
+            args.length = Math.min(i + 1, args.length);
+          }
+        });
+        if (args.length > this._args.length) {
+          this._excessArguments(args);
+        }
+
+        this._actionHandler(args);
+        if (this.parent) this.parent.emit(commandEvent, operands, unknown); // legacy
+      } else if (this.parent && this.parent.listenerCount(commandEvent)) {
+        checkForUnknownOptions();
+        this.parent.emit(commandEvent, operands, unknown); // legacy
+      } else if (operands.length) {
+        if (this._findCommand('*')) { // legacy default command
+          this._dispatchSubcommand('*', operands, unknown);
+        } else if (this.listenerCount('command:*')) {
+          // skip option check, emit event for possible misspelling suggestion
+          this.emit('command:*', operands, unknown);
+        } else if (this.commands.length) {
+          this.unknownCommand();
+        } else {
+          checkForUnknownOptions();
+        }
+      } else if (this.commands.length) {
+        // This command has subcommands and nothing hooked up at this level, so display help.
+        this.help({ error: true });
+      } else {
+        checkForUnknownOptions();
+        // fall through for caller to handle after calling .parse()
+      }
+    }
+  };
+
+  /**
+   * Find matching command.
+   *
+   * @api private
+   */
+  _findCommand(name) {
+    if (!name) return undefined;
+    return this.commands.find(cmd => cmd._name === name || cmd._aliases.includes(name));
+  };
+
+  /**
+   * Return an option matching `arg` if any.
+   *
+   * @param {string} arg
+   * @return {Option}
+   * @api private
+   */
+
+  _findOption(arg) {
+    return this.options.find(option => option.is(arg));
+  };
+
+  /**
+   * Display an error message if a mandatory option does not have a value.
+   * Lazy calling after checking for help flags from leaf subcommand.
+   *
+   * @api private
+   */
+
+  _checkForMissingMandatoryOptions() {
+    // Walk up hierarchy so can call in subcommand after checking for displaying help.
+    for (let cmd = this; cmd; cmd = cmd.parent) {
+      cmd.options.forEach((anOption) => {
+        if (anOption.mandatory && (cmd._getOptionValue(anOption.attributeName()) === undefined)) {
+          cmd.missingMandatoryOptionValue(anOption);
+        }
+      });
+    }
+  };
+
+  /**
+   * Parse options from `argv` removing known options,
+   * and return argv split into operands and unknown arguments.
+   *
+   * Examples:
+   *
+   *    argv => operands, unknown
+   *    --known kkk op => [op], []
+   *    op --known kkk => [op], []
+   *    sub --unknown uuu op => [sub], [--unknown uuu op]
+   *    sub -- --unknown uuu op => [sub --unknown uuu op], []
+   *
+   * @param {String[]} argv
+   * @return {{operands: String[], unknown: String[]}}
+   */
+
+  parseOptions(argv) {
+    const operands = []; // operands, not options or values
+    const unknown = []; // first unknown option and remaining unknown args
+    let dest = operands;
+    const args = argv.slice();
+
+    function maybeOption(arg) {
+      return arg.length > 1 && arg[0] === '-';
+    }
+
+    // parse options
+    let activeVariadicOption = null;
+    while (args.length) {
+      const arg = args.shift();
+
+      // literal
+      if (arg === '--') {
+        if (dest === unknown) dest.push(arg);
+        dest.push(...args);
+        break;
+      }
+
+      if (activeVariadicOption && !maybeOption(arg)) {
+        this.emit(`option:${activeVariadicOption.name()}`, arg);
+        continue;
+      }
+      activeVariadicOption = null;
+
+      if (maybeOption(arg)) {
+        const option = this._findOption(arg);
+        // recognised option, call listener to assign value with possible custom processing
+        if (option) {
+          if (option.required) {
+            const value = args.shift();
+            if (value === undefined) this.optionMissingArgument(option);
+            this.emit(`option:${option.name()}`, value);
+          } else if (option.optional) {
+            let value = null;
+            // historical behaviour is optional value is following arg unless an option
+            if (args.length > 0 && !maybeOption(args[0])) {
+              value = args.shift();
             }
+            this.emit(`option:${option.name()}`, value);
+          } else { // boolean flag
+            this.emit(`option:${option.name()}`);
+          }
+          activeVariadicOption = option.variadic ? option : null;
+          continue;
         }
-        cmdStr += `${CMD_STRING}${escapeData(this.message)}`;
-        return cmdStr;
+      }
+
+      // Look for combo options following single dash, eat first one if known.
+      if (arg.length > 2 && arg[0] === '-' && arg[1] !== '-') {
+        const option = this._findOption(`-${arg[1]}`);
+        if (option) {
+          if (option.required || (option.optional && this._combineFlagAndOptionalValue)) {
+            // option with value following in same argument
+            this.emit(`option:${option.name()}`, arg.slice(2));
+          } else {
+            // boolean option, emit and put back remainder of arg for further processing
+            this.emit(`option:${option.name()}`);
+            args.unshift(`-${arg.slice(2)}`);
+          }
+          continue;
+        }
+      }
+
+      // Look for known long flag with value, like --foo=bar
+      if (/^--[^=]+=/.test(arg)) {
+        const index = arg.indexOf('=');
+        const option = this._findOption(arg.slice(0, index));
+        if (option && (option.required || option.optional)) {
+          this.emit(`option:${option.name()}`, arg.slice(index + 1));
+          continue;
+        }
+      }
+
+      // Not a recognised option by this command.
+      // Might be a command-argument, or subcommand option, or unknown option, or help command or option.
+
+      // An unknown option means further arguments also classified as unknown so can be reprocessed by subcommands.
+      if (maybeOption(arg)) {
+        dest = unknown;
+      }
+
+      // If using positionalOptions, stop processing our options at subcommand.
+      if ((this._enablePositionalOptions || this._passThroughOptions) && operands.length === 0 && unknown.length === 0) {
+        if (this._findCommand(arg)) {
+          operands.push(arg);
+          if (args.length > 0) unknown.push(...args);
+          break;
+        } else if (arg === this._helpCommandName && this._hasImplicitHelpCommand()) {
+          operands.push(arg);
+          if (args.length > 0) operands.push(...args);
+          break;
+        } else if (this._defaultCommandName) {
+          unknown.push(arg);
+          if (args.length > 0) unknown.push(...args);
+          break;
+        }
+      }
+
+      // If using passThroughOptions, stop processing options at first command-argument.
+      if (this._passThroughOptions) {
+        dest.push(arg);
+        if (args.length > 0) dest.push(...args);
+        break;
+      }
+
+      // add arg
+      dest.push(arg);
     }
-}
+
+    return { operands, unknown };
+  };
+
+  /**
+   * Return an object containing options as key-value pairs
+   *
+   * @return {Object}
+   */
+  opts() {
+    if (this._storeOptionsAsProperties) {
+      // Preserve original behaviour so backwards compatible when still using properties
+      const result = {};
+      const len = this.options.length;
+
+      for (let i = 0; i < len; i++) {
+        const key = this.options[i].attributeName();
+        result[key] = key === this._versionOptionName ? this._version : this[key];
+      }
+      return result;
+    }
+
+    return this._optionValues;
+  };
+
+  /**
+   * Internal bottleneck for handling of parsing errors.
+   *
+   * @api private
+   */
+  _displayError(exitCode, code, message) {
+    this._outputConfiguration.outputError(`${message}\n`, this._outputConfiguration.writeErr);
+    this._exit(exitCode, code, message);
+  }
+
+  /**
+   * Argument `name` is missing.
+   *
+   * @param {string} name
+   * @api private
+   */
+
+  missingArgument(name) {
+    const message = `error: missing required argument '${name}'`;
+    this._displayError(1, 'commander.missingArgument', message);
+  };
+
+  /**
+   * `Option` is missing an argument.
+   *
+   * @param {Option} option
+   * @api private
+   */
+
+  optionMissingArgument(option) {
+    const message = `error: option '${option.flags}' argument missing`;
+    this._displayError(1, 'commander.optionMissingArgument', message);
+  };
+
+  /**
+   * `Option` does not have a value, and is a mandatory option.
+   *
+   * @param {Option} option
+   * @api private
+   */
+
+  missingMandatoryOptionValue(option) {
+    const message = `error: required option '${option.flags}' not specified`;
+    this._displayError(1, 'commander.missingMandatoryOptionValue', message);
+  };
+
+  /**
+   * Unknown option `flag`.
+   *
+   * @param {string} flag
+   * @api private
+   */
+
+  unknownOption(flag) {
+    if (this._allowUnknownOption) return;
+    const message = `error: unknown option '${flag}'`;
+    this._displayError(1, 'commander.unknownOption', message);
+  };
+
+  /**
+   * Excess arguments, more than expected.
+   *
+   * @param {string[]} receivedArgs
+   * @api private
+   */
+
+  _excessArguments(receivedArgs) {
+    if (this._allowExcessArguments) return;
+
+    const expected = this._args.length;
+    const s = (expected === 1) ? '' : 's';
+    const forSubcommand = this.parent ? ` for '${this.name()}'` : '';
+    const message = `error: too many arguments${forSubcommand}. Expected ${expected} argument${s} but got ${receivedArgs.length}.`;
+    this._displayError(1, 'commander.excessArguments', message);
+  };
+
+  /**
+   * Unknown command.
+   *
+   * @api private
+   */
+
+  unknownCommand() {
+    const partCommands = [this.name()];
+    for (let parentCmd = this.parent; parentCmd; parentCmd = parentCmd.parent) {
+      partCommands.unshift(parentCmd.name());
+    }
+    const fullCommand = partCommands.join(' ');
+    const message = `error: unknown command '${this.args[0]}'.` +
+      (this._hasHelpOption ? ` See '${fullCommand} ${this._helpLongFlag}'.` : '');
+    this._displayError(1, 'commander.unknownCommand', message);
+  };
+
+  /**
+   * Set the program version to `str`.
+   *
+   * This method auto-registers the "-V, --version" flag
+   * which will print the version number when passed.
+   *
+   * You can optionally supply the  flags and description to override the defaults.
+   *
+   * @param {string} str
+   * @param {string} [flags]
+   * @param {string} [description]
+   * @return {this | string} `this` command for chaining, or version string if no arguments
+   */
+
+  version(str, flags, description) {
+    if (str === undefined) return this._version;
+    this._version = str;
+    flags = flags || '-V, --version';
+    description = description || 'output the version number';
+    const versionOption = this.createOption(flags, description);
+    this._versionOptionName = versionOption.attributeName();
+    this.options.push(versionOption);
+    this.on('option:' + versionOption.name(), () => {
+      this._outputConfiguration.writeOut(`${str}\n`);
+      this._exit(0, 'commander.version', str);
+    });
+    return this;
+  };
+
+  /**
+   * Set the description to `str`.
+   *
+   * @param {string} [str]
+   * @param {Object} [argsDescription]
+   * @return {string|Command}
+   */
+  description(str, argsDescription) {
+    if (str === undefined && argsDescription === undefined) return this._description;
+    this._description = str;
+    this._argsDescription = argsDescription;
+    return this;
+  };
+
+  /**
+   * Set an alias for the command.
+   *
+   * You may call more than once to add multiple aliases. Only the first alias is shown in the auto-generated help.
+   *
+   * @param {string} [alias]
+   * @return {string|Command}
+   */
+
+  alias(alias) {
+    if (alias === undefined) return this._aliases[0]; // just return first, for backwards compatibility
+
+    let command = this;
+    if (this.commands.length !== 0 && this.commands[this.commands.length - 1]._executableHandler) {
+      // assume adding alias for last added executable subcommand, rather than this
+      command = this.commands[this.commands.length - 1];
+    }
+
+    if (alias === command._name) throw new Error('Command alias can\'t be the same as its name');
+
+    command._aliases.push(alias);
+    return this;
+  };
+
+  /**
+   * Set aliases for the command.
+   *
+   * Only the first alias is shown in the auto-generated help.
+   *
+   * @param {string[]} [aliases]
+   * @return {string[]|Command}
+   */
+
+  aliases(aliases) {
+    // Getter for the array of aliases is the main reason for having aliases() in addition to alias().
+    if (aliases === undefined) return this._aliases;
+
+    aliases.forEach((alias) => this.alias(alias));
+    return this;
+  };
+
+  /**
+   * Set / get the command usage `str`.
+   *
+   * @param {string} [str]
+   * @return {String|Command}
+   */
+
+  usage(str) {
+    if (str === undefined) {
+      if (this._usage) return this._usage;
+
+      const args = this._args.map((arg) => {
+        return humanReadableArgName(arg);
+      });
+      return [].concat(
+        (this.options.length || this._hasHelpOption ? '[options]' : []),
+        (this.commands.length ? '[command]' : []),
+        (this._args.length ? args : [])
+      ).join(' ');
+    }
+
+    this._usage = str;
+    return this;
+  };
+
+  /**
+   * Get or set the name of the command
+   *
+   * @param {string} [str]
+   * @return {string|Command}
+   */
+
+  name(str) {
+    if (str === undefined) return this._name;
+    this._name = str;
+    return this;
+  };
+
+  /**
+   * Return program help documentation.
+   *
+   * @param {{ error: boolean }} [contextOptions] - pass {error:true} to wrap for stderr instead of stdout
+   * @return {string}
+   */
+
+  helpInformation(contextOptions) {
+    const helper = this.createHelp();
+    if (helper.helpWidth === undefined) {
+      helper.helpWidth = (contextOptions && contextOptions.error) ? this._outputConfiguration.getErrHelpWidth() : this._outputConfiguration.getOutHelpWidth();
+    }
+    return helper.formatHelp(this, helper);
+  };
+
+  /**
+   * @api private
+   */
+
+  _getHelpContext(contextOptions) {
+    contextOptions = contextOptions || {};
+    const context = { error: !!contextOptions.error };
+    let write;
+    if (context.error) {
+      write = (arg) => this._outputConfiguration.writeErr(arg);
+    } else {
+      write = (arg) => this._outputConfiguration.writeOut(arg);
+    }
+    context.write = contextOptions.write || write;
+    context.command = this;
+    return context;
+  }
+
+  /**
+   * Output help information for this command.
+   *
+   * Outputs built-in help, and custom text added using `.addHelpText()`.
+   *
+   * @param {{ error: boolean } | Function} [contextOptions] - pass {error:true} to write to stderr instead of stdout
+   */
+
+  outputHelp(contextOptions) {
+    let deprecatedCallback;
+    if (typeof contextOptions === 'function') {
+      deprecatedCallback = contextOptions;
+      contextOptions = undefined;
+    }
+    const context = this._getHelpContext(contextOptions);
+
+    const groupListeners = [];
+    let command = this;
+    while (command) {
+      groupListeners.push(command); // ordered from current command to root
+      command = command.parent;
+    }
+
+    groupListeners.slice().reverse().forEach(command => command.emit('beforeAllHelp', context));
+    this.emit('beforeHelp', context);
+
+    let helpInformation = this.helpInformation(context);
+    if (deprecatedCallback) {
+      helpInformation = deprecatedCallback(helpInformation);
+      if (typeof helpInformation !== 'string' && !Buffer.isBuffer(helpInformation)) {
+        throw new Error('outputHelp callback must return a string or a Buffer');
+      }
+    }
+    context.write(helpInformation);
+
+    this.emit(this._helpLongFlag); // deprecated
+    this.emit('afterHelp', context);
+    groupListeners.forEach(command => command.emit('afterAllHelp', context));
+  };
+
+  /**
+   * You can pass in flags and a description to override the help
+   * flags and help description for your command. Pass in false to
+   * disable the built-in help option.
+   *
+   * @param {string | boolean} [flags]
+   * @param {string} [description]
+   * @return {Command} `this` command for chaining
+   */
+
+  helpOption(flags, description) {
+    if (typeof flags === 'boolean') {
+      this._hasHelpOption = flags;
+      return this;
+    }
+    this._helpFlags = flags || this._helpFlags;
+    this._helpDescription = description || this._helpDescription;
+
+    const helpFlags = _parseOptionFlags(this._helpFlags);
+    this._helpShortFlag = helpFlags.shortFlag;
+    this._helpLongFlag = helpFlags.longFlag;
+
+    return this;
+  };
+
+  /**
+   * Output help information and exit.
+   *
+   * Outputs built-in help, and custom text added using `.addHelpText()`.
+   *
+   * @param {{ error: boolean }} [contextOptions] - pass {error:true} to write to stderr instead of stdout
+   */
+
+  help(contextOptions) {
+    this.outputHelp(contextOptions);
+    let exitCode = process.exitCode || 0;
+    if (exitCode === 0 && contextOptions && typeof contextOptions !== 'function' && contextOptions.error) {
+      exitCode = 1;
+    }
+    // message: do not have all displayed text available so only passing placeholder.
+    this._exit(exitCode, 'commander.help', '(outputHelp)');
+  };
+
+  /**
+   * Add additional text to be displayed with the built-in help.
+   *
+   * Position is 'before' or 'after' to affect just this command,
+   * and 'beforeAll' or 'afterAll' to affect this command and all its subcommands.
+   *
+   * @param {string} position - before or after built-in help
+   * @param {string | Function} text - string to add, or a function returning a string
+   * @return {Command} `this` command for chaining
+   */
+  addHelpText(position, text) {
+    const allowedValues = ['beforeAll', 'before', 'after', 'afterAll'];
+    if (!allowedValues.includes(position)) {
+      throw new Error(`Unexpected value for position to addHelpText.
+Expecting one of '${allowedValues.join("', '")}'`);
+    }
+    const helpEvent = `${position}Help`;
+    this.on(helpEvent, (context) => {
+      let helpStr;
+      if (typeof text === 'function') {
+        helpStr = text({ error: context.error, command: context.command });
+      } else {
+        helpStr = text;
+      }
+      // Ignore falsy value when nothing to output.
+      if (helpStr) {
+        context.write(`${helpStr}\n`);
+      }
+    });
+    return this;
+  }
+};
+
 /**
- * Sanitizes an input into a string so it can be passed into issueCommand safely
- * @param input input to sanitize into a string
+ * Expose the root command.
  */
-function toCommandValue(input) {
-    if (input === null || input === undefined) {
-        return '';
+
+exports = module.exports = new Command();
+exports.program = exports; // More explicit access to global command.
+
+/**
+ * Expose classes
+ */
+
+exports.Command = Command;
+exports.Option = Option;
+exports.CommanderError = CommanderError;
+exports.InvalidOptionArgumentError = InvalidOptionArgumentError;
+exports.Help = Help;
+
+/**
+ * Camel-case the given `flag`
+ *
+ * @param {string} flag
+ * @return {string}
+ * @api private
+ */
+
+function camelcase(flag) {
+  return flag.split('-').reduce((str, word) => {
+    return str + word[0].toUpperCase() + word.slice(1);
+  });
+}
+
+/**
+ * Output help information if help flags specified
+ *
+ * @param {Command} cmd - command to output help for
+ * @param {Array} args - array of options to search for help flags
+ * @api private
+ */
+
+function outputHelpIfRequested(cmd, args) {
+  const helpOption = cmd._hasHelpOption && args.find(arg => arg === cmd._helpLongFlag || arg === cmd._helpShortFlag);
+  if (helpOption) {
+    cmd.outputHelp();
+    // (Do not have all displayed text available so only passing placeholder.)
+    cmd._exit(0, 'commander.helpDisplayed', '(outputHelp)');
+  }
+}
+
+/**
+ * Takes an argument and returns its human readable equivalent for help usage.
+ *
+ * @param {Object} arg
+ * @return {string}
+ * @api private
+ */
+
+function humanReadableArgName(arg) {
+  const nameOutput = arg.name + (arg.variadic === true ? '...' : '');
+
+  return arg.required
+    ? '<' + nameOutput + '>'
+    : '[' + nameOutput + ']';
+}
+
+/**
+ * Parse the short and long flag out of something like '-m,--mixed <value>'
+ *
+ * @api private
+ */
+
+function _parseOptionFlags(flags) {
+  let shortFlag;
+  let longFlag;
+  // Use original very loose parsing to maintain backwards compatibility for now,
+  // which allowed for example unintended `-sw, --short-word` [sic].
+  const flagParts = flags.split(/[ |,]+/);
+  if (flagParts.length > 1 && !/^[[<]/.test(flagParts[1])) shortFlag = flagParts.shift();
+  longFlag = flagParts.shift();
+  // Add support for lone short flag without significantly changing parsing!
+  if (!shortFlag && /^-[^-]$/.test(longFlag)) {
+    shortFlag = longFlag;
+    longFlag = undefined;
+  }
+  return { shortFlag, longFlag };
+}
+
+/**
+ * Scan arguments and increment port number for inspect calls (to avoid conflicts when spawning new command).
+ *
+ * @param {string[]} args - array of arguments from node.execArgv
+ * @returns {string[]}
+ * @api private
+ */
+
+function incrementNodeInspectorPort(args) {
+  // Testing for these options:
+  //  --inspect[=[host:]port]
+  //  --inspect-brk[=[host:]port]
+  //  --inspect-port=[host:]port
+  return args.map((arg) => {
+    if (!arg.startsWith('--inspect')) {
+      return arg;
     }
-    else if (typeof input === 'string' || input instanceof String) {
-        return input;
+    let debugOption;
+    let debugHost = '127.0.0.1';
+    let debugPort = '9229';
+    let match;
+    if ((match = arg.match(/^(--inspect(-brk)?)$/)) !== null) {
+      // e.g. --inspect
+      debugOption = match[1];
+    } else if ((match = arg.match(/^(--inspect(-brk|-port)?)=([^:]+)$/)) !== null) {
+      debugOption = match[1];
+      if (/^\d+$/.test(match[3])) {
+        // e.g. --inspect=1234
+        debugPort = match[3];
+      } else {
+        // e.g. --inspect=localhost
+        debugHost = match[3];
+      }
+    } else if ((match = arg.match(/^(--inspect(-brk|-port)?)=([^:]+):(\d+)$/)) !== null) {
+      // e.g. --inspect=localhost:1234
+      debugOption = match[1];
+      debugHost = match[3];
+      debugPort = match[4];
     }
-    return JSON.stringify(input);
+
+    if (debugOption && debugPort !== '0') {
+      return `${debugOption}=${debugHost}:${parseInt(debugPort) + 1}`;
+    }
+    return arg;
+  });
 }
-exports.toCommandValue = toCommandValue;
-function escapeData(s) {
-    return toCommandValue(s)
-        .replace(/%/g, '%25')
-        .replace(/\r/g, '%0D')
-        .replace(/\n/g, '%0A');
-}
-function escapeProperty(s) {
-    return toCommandValue(s)
-        .replace(/%/g, '%25')
-        .replace(/\r/g, '%0D')
-        .replace(/\n/g, '%0A')
-        .replace(/:/g, '%3A')
-        .replace(/,/g, '%2C');
-}
-//# sourceMappingURL=command.js.map
+
 
 /***/ }),
 
-/***/ 277:
+/***/ 424:
+/***/ (function(module) {
+
+class Command {
+  constructor (api, params) {
+    if (this.constructor === Command) {
+      throw new Error("Abstract classes can't be instantiated.")
+    }
+  }
+  
+  name () {
+    throw new Error("Method 'name()' must be implemented first")
+  }
+
+  validate () {
+    throw new Error("Method 'validate()' must be implemented first")
+  }
+
+  async execute () {
+    throw new Error("Method 'execute()' must be implemented first")
+  }
+}
+
+module.exports = Command
+
+
+/***/ }),
+
+/***/ 426:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+module.exports = [
+  __webpack_require__(818),
+  __webpack_require__(788)
+]
+
+/***/ }),
+
+/***/ 456:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const { command } = __webpack_require__(346);
+const commands = __webpack_require__(426);
+
+class Invoker {
+  constructor(options) {
+    this.commandsList = {};
+    this.options = options || null;
+    this.loadCommands();
+  }
+
+  /**
+   * Create a new instance of each command loaded from ./commands
+   * and add it to the commandsList instance variable
+   */
+  loadCommands() {
+    commands.reduce((accumulator, command) => {
+      let instance = new command;
+      accumulator[instance.name()] = instance;
+      return accumulator;
+    }, this.commandsList);
+  }
+
+  /**
+   * Runs a number of checks and attemps to execute a command
+   * @param {Object} options 
+   * @returns 
+   */
+  async executeCommand(options) {
+    // It's possible to supply an empty string as a command name so we have
+    // to guard against this
+    if (!options.command) {
+      throw new Error("required option '-c, --command <command name>' command name must be supplied");
+    }
+    // We need to make sure the command name provided matches the name of one of
+    // our loaded commands. Remember, loadCommands() uses the command name
+    // as the key in the commandsList dictionary
+    if (!(options.command in this.commandsList)) {
+      throw new Error(`${options.command} not found in the loaded commands`)
+    }
+    const command = this.commandsList[options.command];
+    // If all the checks pass, we're good to execute the command
+    return await command.execute(options);
+  }
+}
+
+module.exports = Invoker
+
+/***/ }),
+
+/***/ 614:
+/***/ (function(module) {
+
+module.exports = require("events");
+
+/***/ }),
+
+/***/ 622:
 /***/ (function(module) {
 
 module.exports = require("path");
 
 /***/ }),
 
-/***/ 413:
+/***/ 747:
 /***/ (function(module) {
 
-module.exports = require("stream");
+module.exports = require("fs");
 
 /***/ }),
 
-/***/ 516:
-/***/ (function(module) {
-
-/**
- * TextRenderer
- * returns only the textual part of the token
- */
-module.exports = class TextRenderer {
-  // no need for block level renderers
-  strong(text) {
-    return text;
-  }
-
-  em(text) {
-    return text;
-  }
-
-  codespan(text) {
-    return text;
-  }
-
-  del(text) {
-    return text;
-  }
-
-  html(text) {
-    return text;
-  }
-
-  text(text) {
-    return text;
-  }
-
-  link(href, title, text) {
-    return '' + text;
-  }
-
-  image(href, title, text) {
-    return '' + text;
-  }
-
-  br() {
-    return '';
-  }
-};
-
-
-/***/ }),
-
-/***/ 541:
+/***/ 788:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const { defaults } = __webpack_require__(44);
-const {
-  rtrim,
-  splitCells,
-  escape,
-  findClosingBracket
-} = __webpack_require__(781);
+const Command = __webpack_require__(424)
 
-function outputLink(cap, link, raw) {
-  const href = link.href;
-  const title = link.title ? escape(link.title) : null;
-  const text = cap[1].replace(/\\([\[\]])/g, '$1');
-
-  if (cap[0].charAt(0) !== '!') {
-    return {
-      type: 'link',
-      raw,
-      href,
-      title,
-      text
-    };
-  } else {
-    return {
-      type: 'image',
-      raw,
-      href,
-      title,
-      text: escape(text)
-    };
-  }
-}
-
-function indentCodeCompensation(raw, text) {
-  const matchIndentToCode = raw.match(/^(\s+)(?:```)/);
-
-  if (matchIndentToCode === null) {
-    return text;
-  }
-
-  const indentToCode = matchIndentToCode[1];
-
-  return text
-    .split('\n')
-    .map(node => {
-      const matchIndentInNode = node.match(/^\s+/);
-      if (matchIndentInNode === null) {
-        return node;
-      }
-
-      const [indentInNode] = matchIndentInNode;
-
-      if (indentInNode.length >= indentToCode.length) {
-        return node.slice(indentToCode.length);
-      }
-
-      return node;
-    })
-    .join('\n');
-}
-
-/**
- * Tokenizer
- */
-module.exports = class Tokenizer {
-  constructor(options) {
-    this.options = options || defaults;
-  }
-
-  space(src) {
-    const cap = this.rules.block.newline.exec(src);
-    if (cap) {
-      if (cap[0].length > 1) {
-        return {
-          type: 'space',
-          raw: cap[0]
-        };
-      }
-      return { raw: '\n' };
-    }
-  }
-
-  code(src, tokens) {
-    const cap = this.rules.block.code.exec(src);
-    if (cap) {
-      const lastToken = tokens[tokens.length - 1];
-      // An indented code block cannot interrupt a paragraph.
-      if (lastToken && lastToken.type === 'paragraph') {
-        return {
-          raw: cap[0],
-          text: cap[0].trimRight()
-        };
-      }
-
-      const text = cap[0].replace(/^ {4}/gm, '');
-      return {
-        type: 'code',
-        raw: cap[0],
-        codeBlockStyle: 'indented',
-        text: !this.options.pedantic
-          ? rtrim(text, '\n')
-          : text
-      };
-    }
-  }
-
-  fences(src) {
-    const cap = this.rules.block.fences.exec(src);
-    if (cap) {
-      const raw = cap[0];
-      const text = indentCodeCompensation(raw, cap[3] || '');
-
-      return {
-        type: 'code',
-        raw,
-        lang: cap[2] ? cap[2].trim() : cap[2],
-        text
-      };
-    }
-  }
-
-  heading(src) {
-    const cap = this.rules.block.heading.exec(src);
-    if (cap) {
-      return {
-        type: 'heading',
-        raw: cap[0],
-        depth: cap[1].length,
-        text: cap[2]
-      };
-    }
-  }
-
-  nptable(src) {
-    const cap = this.rules.block.nptable.exec(src);
-    if (cap) {
-      const item = {
-        type: 'table',
-        header: splitCells(cap[1].replace(/^ *| *\| *$/g, '')),
-        align: cap[2].replace(/^ *|\| *$/g, '').split(/ *\| */),
-        cells: cap[3] ? cap[3].replace(/\n$/, '').split('\n') : [],
-        raw: cap[0]
-      };
-
-      if (item.header.length === item.align.length) {
-        let l = item.align.length;
-        let i;
-        for (i = 0; i < l; i++) {
-          if (/^ *-+: *$/.test(item.align[i])) {
-            item.align[i] = 'right';
-          } else if (/^ *:-+: *$/.test(item.align[i])) {
-            item.align[i] = 'center';
-          } else if (/^ *:-+ *$/.test(item.align[i])) {
-            item.align[i] = 'left';
-          } else {
-            item.align[i] = null;
-          }
-        }
-
-        l = item.cells.length;
-        for (i = 0; i < l; i++) {
-          item.cells[i] = splitCells(item.cells[i], item.header.length);
-        }
-
-        return item;
-      }
-    }
-  }
-
-  hr(src) {
-    const cap = this.rules.block.hr.exec(src);
-    if (cap) {
-      return {
-        type: 'hr',
-        raw: cap[0]
-      };
-    }
-  }
-
-  blockquote(src) {
-    const cap = this.rules.block.blockquote.exec(src);
-    if (cap) {
-      const text = cap[0].replace(/^ *> ?/gm, '');
-
-      return {
-        type: 'blockquote',
-        raw: cap[0],
-        text
-      };
-    }
-  }
-
-  list(src) {
-    const cap = this.rules.block.list.exec(src);
-    if (cap) {
-      let raw = cap[0];
-      const bull = cap[2];
-      const isordered = bull.length > 1;
-      const isparen = bull[bull.length - 1] === ')';
-
-      const list = {
-        type: 'list',
-        raw,
-        ordered: isordered,
-        start: isordered ? +bull.slice(0, -1) : '',
-        loose: false,
-        items: []
-      };
-
-      // Get each top-level item.
-      const itemMatch = cap[0].match(this.rules.block.item);
-
-      let next = false,
-        item,
-        space,
-        b,
-        addBack,
-        loose,
-        istask,
-        ischecked;
-
-      const l = itemMatch.length;
-      for (let i = 0; i < l; i++) {
-        item = itemMatch[i];
-        raw = item;
-
-        // Remove the list item's bullet
-        // so it is seen as the next token.
-        space = item.length;
-        item = item.replace(/^ *([*+-]|\d+[.)]) */, '');
-
-        // Outdent whatever the
-        // list item contains. Hacky.
-        if (~item.indexOf('\n ')) {
-          space -= item.length;
-          item = !this.options.pedantic
-            ? item.replace(new RegExp('^ {1,' + space + '}', 'gm'), '')
-            : item.replace(/^ {1,4}/gm, '');
-        }
-
-        // Determine whether the next list item belongs here.
-        // Backpedal if it does not belong in this list.
-        if (i !== l - 1) {
-          b = this.rules.block.bullet.exec(itemMatch[i + 1])[0];
-          if (isordered ? b.length === 1 || (!isparen && b[b.length - 1] === ')')
-            : (b.length > 1 || (this.options.smartLists && b !== bull))) {
-            addBack = itemMatch.slice(i + 1).join('\n');
-            list.raw = list.raw.substring(0, list.raw.length - addBack.length);
-            i = l - 1;
-          }
-        }
-
-        // Determine whether item is loose or not.
-        // Use: /(^|\n)(?! )[^\n]+\n\n(?!\s*$)/
-        // for discount behavior.
-        loose = next || /\n\n(?!\s*$)/.test(item);
-        if (i !== l - 1) {
-          next = item.charAt(item.length - 1) === '\n';
-          if (!loose) loose = next;
-        }
-
-        if (loose) {
-          list.loose = true;
-        }
-
-        // Check for task list items
-        istask = /^\[[ xX]\] /.test(item);
-        ischecked = undefined;
-        if (istask) {
-          ischecked = item[1] !== ' ';
-          item = item.replace(/^\[[ xX]\] +/, '');
-        }
-
-        list.items.push({
-          type: 'list_item',
-          raw,
-          task: istask,
-          checked: ischecked,
-          loose: loose,
-          text: item
-        });
-      }
-
-      return list;
-    }
-  }
-
-  html(src) {
-    const cap = this.rules.block.html.exec(src);
-    if (cap) {
-      return {
-        type: this.options.sanitize
-          ? 'paragraph'
-          : 'html',
-        raw: cap[0],
-        pre: !this.options.sanitizer
-          && (cap[1] === 'pre' || cap[1] === 'script' || cap[1] === 'style'),
-        text: this.options.sanitize ? (this.options.sanitizer ? this.options.sanitizer(cap[0]) : escape(cap[0])) : cap[0]
-      };
-    }
-  }
-
-  def(src) {
-    const cap = this.rules.block.def.exec(src);
-    if (cap) {
-      if (cap[3]) cap[3] = cap[3].substring(1, cap[3].length - 1);
-      const tag = cap[1].toLowerCase().replace(/\s+/g, ' ');
-      return {
-        tag,
-        raw: cap[0],
-        href: cap[2],
-        title: cap[3]
-      };
-    }
-  }
-
-  table(src) {
-    const cap = this.rules.block.table.exec(src);
-    if (cap) {
-      const item = {
-        type: 'table',
-        header: splitCells(cap[1].replace(/^ *| *\| *$/g, '')),
-        align: cap[2].replace(/^ *|\| *$/g, '').split(/ *\| */),
-        cells: cap[3] ? cap[3].replace(/\n$/, '').split('\n') : []
-      };
-
-      if (item.header.length === item.align.length) {
-        item.raw = cap[0];
-
-        let l = item.align.length;
-        let i;
-        for (i = 0; i < l; i++) {
-          if (/^ *-+: *$/.test(item.align[i])) {
-            item.align[i] = 'right';
-          } else if (/^ *:-+: *$/.test(item.align[i])) {
-            item.align[i] = 'center';
-          } else if (/^ *:-+ *$/.test(item.align[i])) {
-            item.align[i] = 'left';
-          } else {
-            item.align[i] = null;
-          }
-        }
-
-        l = item.cells.length;
-        for (i = 0; i < l; i++) {
-          item.cells[i] = splitCells(
-            item.cells[i].replace(/^ *\| *| *\| *$/g, ''),
-            item.header.length);
-        }
-
-        return item;
-      }
-    }
-  }
-
-  lheading(src) {
-    const cap = this.rules.block.lheading.exec(src);
-    if (cap) {
-      return {
-        type: 'heading',
-        raw: cap[0],
-        depth: cap[2].charAt(0) === '=' ? 1 : 2,
-        text: cap[1]
-      };
-    }
-  }
-
-  paragraph(src) {
-    const cap = this.rules.block.paragraph.exec(src);
-    if (cap) {
-      return {
-        type: 'paragraph',
-        raw: cap[0],
-        text: cap[1].charAt(cap[1].length - 1) === '\n'
-          ? cap[1].slice(0, -1)
-          : cap[1]
-      };
-    }
-  }
-
-  text(src, tokens) {
-    const cap = this.rules.block.text.exec(src);
-    if (cap) {
-      const lastToken = tokens[tokens.length - 1];
-      if (lastToken && lastToken.type === 'text') {
-        return {
-          raw: cap[0],
-          text: cap[0]
-        };
-      }
-
-      return {
-        type: 'text',
-        raw: cap[0],
-        text: cap[0]
-      };
-    }
-  }
-
-  escape(src) {
-    const cap = this.rules.inline.escape.exec(src);
-    if (cap) {
-      return {
-        type: 'escape',
-        raw: cap[0],
-        text: escape(cap[1])
-      };
-    }
-  }
-
-  tag(src, inLink, inRawBlock) {
-    const cap = this.rules.inline.tag.exec(src);
-    if (cap) {
-      if (!inLink && /^<a /i.test(cap[0])) {
-        inLink = true;
-      } else if (inLink && /^<\/a>/i.test(cap[0])) {
-        inLink = false;
-      }
-      if (!inRawBlock && /^<(pre|code|kbd|script)(\s|>)/i.test(cap[0])) {
-        inRawBlock = true;
-      } else if (inRawBlock && /^<\/(pre|code|kbd|script)(\s|>)/i.test(cap[0])) {
-        inRawBlock = false;
-      }
-
-      return {
-        type: this.options.sanitize
-          ? 'text'
-          : 'html',
-        raw: cap[0],
-        inLink,
-        inRawBlock,
-        text: this.options.sanitize
-          ? (this.options.sanitizer
-            ? this.options.sanitizer(cap[0])
-            : escape(cap[0]))
-          : cap[0]
-      };
-    }
-  }
-
-  link(src) {
-    const cap = this.rules.inline.link.exec(src);
-    if (cap) {
-      const lastParenIndex = findClosingBracket(cap[2], '()');
-      if (lastParenIndex > -1) {
-        const start = cap[0].indexOf('!') === 0 ? 5 : 4;
-        const linkLen = start + cap[1].length + lastParenIndex;
-        cap[2] = cap[2].substring(0, lastParenIndex);
-        cap[0] = cap[0].substring(0, linkLen).trim();
-        cap[3] = '';
-      }
-      let href = cap[2];
-      let title = '';
-      if (this.options.pedantic) {
-        const link = /^([^'"]*[^\s])\s+(['"])(.*)\2/.exec(href);
-
-        if (link) {
-          href = link[1];
-          title = link[3];
-        } else {
-          title = '';
-        }
-      } else {
-        title = cap[3] ? cap[3].slice(1, -1) : '';
-      }
-      href = href.trim().replace(/^<([\s\S]*)>$/, '$1');
-      const token = outputLink(cap, {
-        href: href ? href.replace(this.rules.inline._escapes, '$1') : href,
-        title: title ? title.replace(this.rules.inline._escapes, '$1') : title
-      }, cap[0]);
-      return token;
-    }
-  }
-
-  reflink(src, links) {
-    let cap;
-    if ((cap = this.rules.inline.reflink.exec(src))
-        || (cap = this.rules.inline.nolink.exec(src))) {
-      let link = (cap[2] || cap[1]).replace(/\s+/g, ' ');
-      link = links[link.toLowerCase()];
-      if (!link || !link.href) {
-        const text = cap[0].charAt(0);
-        return {
-          type: 'text',
-          raw: text,
-          text
-        };
-      }
-      const token = outputLink(cap, link, cap[0]);
-      return token;
-    }
-  }
-
-  strong(src, maskedSrc, prevChar = '') {
-    let match = this.rules.inline.strong.start.exec(src);
-
-    if (match && (!match[1] || (match[1] && (prevChar === '' || this.rules.inline.punctuation.exec(prevChar))))) {
-      maskedSrc = maskedSrc.slice(-1 * src.length);
-      const endReg = match[0] === '**' ? this.rules.inline.strong.endAst : this.rules.inline.strong.endUnd;
-
-      endReg.lastIndex = 0;
-
-      let cap;
-      while ((match = endReg.exec(maskedSrc)) != null) {
-        cap = this.rules.inline.strong.middle.exec(maskedSrc.slice(0, match.index + 3));
-        if (cap) {
-          return {
-            type: 'strong',
-            raw: src.slice(0, cap[0].length),
-            text: src.slice(2, cap[0].length - 2)
-          };
-        }
-      }
-    }
-  }
-
-  em(src, maskedSrc, prevChar = '') {
-    let match = this.rules.inline.em.start.exec(src);
-
-    if (match && (!match[1] || (match[1] && (prevChar === '' || this.rules.inline.punctuation.exec(prevChar))))) {
-      maskedSrc = maskedSrc.slice(-1 * src.length);
-      const endReg = match[0] === '*' ? this.rules.inline.em.endAst : this.rules.inline.em.endUnd;
-
-      endReg.lastIndex = 0;
-
-      let cap;
-      while ((match = endReg.exec(maskedSrc)) != null) {
-        cap = this.rules.inline.em.middle.exec(maskedSrc.slice(0, match.index + 2));
-        if (cap) {
-          return {
-            type: 'em',
-            raw: src.slice(0, cap[0].length),
-            text: src.slice(1, cap[0].length - 1)
-          };
-        }
-      }
-    }
-  }
-
-  codespan(src) {
-    const cap = this.rules.inline.code.exec(src);
-    if (cap) {
-      let text = cap[2].replace(/\n/g, ' ');
-      const hasNonSpaceChars = /[^ ]/.test(text);
-      const hasSpaceCharsOnBothEnds = text.startsWith(' ') && text.endsWith(' ');
-      if (hasNonSpaceChars && hasSpaceCharsOnBothEnds) {
-        text = text.substring(1, text.length - 1);
-      }
-      text = escape(text, true);
-      return {
-        type: 'codespan',
-        raw: cap[0],
-        text
-      };
-    }
-  }
-
-  br(src) {
-    const cap = this.rules.inline.br.exec(src);
-    if (cap) {
-      return {
-        type: 'br',
-        raw: cap[0]
-      };
-    }
-  }
-
-  del(src) {
-    const cap = this.rules.inline.del.exec(src);
-    if (cap) {
-      return {
-        type: 'del',
-        raw: cap[0],
-        text: cap[1]
-      };
-    }
-  }
-
-  autolink(src, mangle) {
-    const cap = this.rules.inline.autolink.exec(src);
-    if (cap) {
-      let text, href;
-      if (cap[2] === '@') {
-        text = escape(this.options.mangle ? mangle(cap[1]) : cap[1]);
-        href = 'mailto:' + text;
-      } else {
-        text = escape(cap[1]);
-        href = text;
-      }
-
-      return {
-        type: 'link',
-        raw: cap[0],
-        text,
-        href,
-        tokens: [
-          {
-            type: 'text',
-            raw: text,
-            text
-          }
-        ]
-      };
-    }
-  }
-
-  url(src, mangle) {
-    let cap;
-    if (cap = this.rules.inline.url.exec(src)) {
-      let text, href;
-      if (cap[2] === '@') {
-        text = escape(this.options.mangle ? mangle(cap[0]) : cap[0]);
-        href = 'mailto:' + text;
-      } else {
-        // do extended autolink path validation
-        let prevCapZero;
-        do {
-          prevCapZero = cap[0];
-          cap[0] = this.rules.inline._backpedal.exec(cap[0])[0];
-        } while (prevCapZero !== cap[0]);
-        text = escape(cap[0]);
-        if (cap[1] === 'www.') {
-          href = 'http://' + text;
-        } else {
-          href = text;
-        }
-      }
-      return {
-        type: 'link',
-        raw: cap[0],
-        text,
-        href,
-        tokens: [
-          {
-            type: 'text',
-            raw: text,
-            text
-          }
-        ]
-      };
-    }
-  }
-
-  inlineText(src, inRawBlock, smartypants) {
-    const cap = this.rules.inline.text.exec(src);
-    if (cap) {
-      let text;
-      if (inRawBlock) {
-        text = this.options.sanitize ? (this.options.sanitizer ? this.options.sanitizer(cap[0]) : escape(cap[0])) : cap[0];
-      } else {
-        text = escape(this.options.smartypants ? smartypants(cap[0]) : cap[0]);
-      }
-      return {
-        type: 'text',
-        raw: cap[0],
-        text
-      };
-    }
-  }
-};
-
-
-/***/ }),
-
-/***/ 605:
-/***/ (function(module) {
-
-module.exports = require("http");
-
-/***/ }),
-
-/***/ 622:
-/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
-
-const core = __webpack_require__(827);
-const fetch = __webpack_require__(770);
-const marked = __webpack_require__(30);
-
-const GITHUB_API_URL = "https://api.github.com/graphql"
-
-/**
- * Returns current date/time with the format: '2012-11-04 14:55:45'
- */
-function getNow() {
-  return new Date().toISOString().
-    replace(/T/, ' ').      // replace T with a space
-    replace(/\..+/, '')     // delete the dot and everything after
-}
-
-
-/**
- * Executes a GraphQL query to fetch the issue we're syncing.
- * Returns the data for the issue in a JSON format.
- *
- * @param {*} params 
- */
-function fetchIssue(params) {
-  const headers = {
-    "Authorization": `Bearer ${params.token}`,
-    "Content-Type": "application/json"
-  }
-  const query = {
-    "query": `
-query {
-  repository(owner: "${params.owner}", name: "${params.repo}") {
-    issue(number: ${params.issueNumber}) {
-      number
-      id
-      databaseId
-      title
-      state
-      author {
-        login
-      }
-      body
-    }
-  }
-}`
-  };
-  return fetch(GITHUB_API_URL, {
-    method: "POST",
-    body: JSON.stringify(query),
-    headers: headers
-  })
-    .then(res => {
-      return res.json();
-    })
-    .then(res => {
-      return res.data.repository.issue;
-    })
-    .catch(error => {
-      core.info("FATAL: Could not fetch issue: ", error.message);
-      core.info(error.stack);
-    });
-}
-
-
-/**
- * Will fetch the first OPEN aggregate issue with the label 'gh-issues-ltt'
- *
- * @param {*} params 
- */
-function fetchAggregateIssue(params) {
-  const headers = {
-    "Authorization": `Bearer ${params.token}`,
-    "Content-Type": "application/json"
-  }
-  const query = {
-    "query": `
-query {
-  repository(owner: "${params.owner}", name: "${params.repo}") {
-    issues(first: 1, filterBy: {
-      labels: ["${params.aggregateIssueLabel}"],
-      states: OPEN
-    }) {
-      nodes {
-        number
-        id
-        databaseId
-        title
-        state
-        author {
-          login
-        }
-        body
-      }
-    }
-  }
-}`
-  };
-  return fetch(GITHUB_API_URL, {
-    method: "POST",
-    body: JSON.stringify(query),
-    headers: headers
-  })
-    .then(res => {
-      return res.json();
-    })
-    .then(res => {
-      return res.data.repository.issues.nodes[0];
-    })
-    .catch(error => {
-      core.info("FATAL: Could not fetch aggregate issue: ", error.message);
-      core.info(error.stack);
-    });
-}
-
-
-/**
- * Get an issue fetched from a repository and parse the markdown
- * to extract the action items
- *
- * @param {*} issue Issues returned from fetchIssues()
- */
-function extractActionItems(params, issue) {
-  return new Promise((resolve, reject) => {
-    // We shouldn't handle more than 1 issue at a time
-    let tokens = marked.lexer(issue.body);
-    let headingPattern = /(?<flag>[A|a]ction [I|i]tems)/;
-    let index = 0;
-    while (index < tokens.length) {
-      // We found the Action Items block
-      if (tokens[index].type == 'heading' && headingPattern.test(tokens[index].text)) {
-        resolve({
-          extractionDate: getNow(),
-          title: issue.title,
-          number: issue.number,
-          // The heading block should immediately be followed by the 
-          // action items list. We only need its items for the next
-          // step
-          items: tokens[index + 1].items
-        });
-      }
-      index++;
-    }
-    // If no action items were found, return an empty object
-    resolve({});
-  });
-}
-
-
-/**
- * Push a new body of the aggregate issue
- *
- * @param {*} params 
- * @param {*} aggregateIssue 
- */
-function updateAggregateIssue(params, aggregateIssue) {
-  const headers = {
-    "Authorization": `Bearer ${params.token}`,
-    "Content-Type": "application/json"
-  }
-  const query = {
-    "query": `
-mutation ($updateIssueInput:UpdateIssueInput!) {
-  updateIssue(input:$updateIssueInput) {
-    clientMutationId
-  }
-}`,
-    "variables": {
-      "updateIssueInput": {
-        "id": `"${aggregateIssue.id}"`,
-        "body": `${aggregateIssue.body}`
-      }
-    }
-  };
-  return fetch(GITHUB_API_URL, {
-    method: "POST",
-    body: JSON.stringify(query),
-    headers: headers
-  })
-    .then(res => {
-      return res.json();
-    })
-    .then(res => {
-      return res;
-    })
-    .catch(error => {
-      core.info("FATAL: Could not update aggregate issue: ", error.message);
-      core.info(error.stack);
-    });
-}
-
-
-/**
- * Search the aggregate issue for a block matching the issue we're syncing.
- * If it exists, sync it.
- * Otherwise create a new block.
- * 
- * @param {*} params 
- * @param {*} actionItems 
- * @param {*} aggregateIssue 
- */
-function syncAggregateIssue(params, actionItems, aggregateIssue) {
-  if (!aggregateIssue)
-    throw new Error('FATAL: Failed to retrieve aggregate issue.');
-  else if (aggregateIssue && Object.entries(aggregateIssue).length === 0)
-    throw new Error('FATAL: Aggregate issue does not exist. Create it first and add the appropriate label.')
-  const parsedAggregateIssue = marked.lexer(aggregateIssue.body);
-  // Identify the heading and the list right below it that require change
-  let syncHeading = {};
-  let syncList = {};
-  let index = 0;
-  while (index < parsedAggregateIssue.length) {
-    let block = parsedAggregateIssue[index];
-    // For each of the blocks in the aggregate issue we extract the heading 
-    // to check if a block belong to the issue we're syncing exists.
-    // If we find it, we sync the action items and the date
-    // otherwise we create a new block for the new issue
-    const headingTextPattern = new RegExp(`.*(?<issueNumber>#${actionItems.number}) - (?<date>.*)`);
-    let headingMatches = headingTextPattern.exec(block.text);
-    if (block.type == "heading" && block.depth == 4 && headingMatches) {
-      // Issue found - sync
-      syncHeading = block;
-      syncHeading["date"] = headingMatches.groups.date;
-      syncList = parsedAggregateIssue[index + 1];
-      // Extract the date from the heading to see if there are changes
-      if (syncHeading.date !== actionItems.extractionDate) {
-        const listReducer = (acc, item) => {
-          return acc.concat(item.raw, "\r\n");
-        };
-        const newActionItemsList = actionItems.items.reduce(listReducer, "").replace(/[\n\r]+$/, '');
-        const oldActionItemsList = syncList.items.reduce(listReducer, "").replace(/[\n\r]+$/, '');
-        const oldHeading = syncHeading.raw.replace(/[\n\r]+/g, '');
-        const newHeading = oldHeading.replace(
-          new RegExp(` - (?<issueNumber>#${actionItems.number}) - (?<date>.*)`),
-          ` - $<issueNumber> - ${actionItems.extractionDate}`
-        );
-        aggregateIssue.body = aggregateIssue.body.replace(oldHeading, newHeading).replace(oldActionItemsList, newActionItemsList);
-        // Push the new content to the aggregate issue
-        return updateAggregateIssue(params, aggregateIssue);
-      } else {
-        // Do nothing
-        return;
-      }
-    }
-    // Jumpt to next item
-    index++;
-  }
-  // If the issue was not found - Add it
-  const listReducer = (acc, item) => {
-    return acc.concat(item.raw, "\r\n");
-  };
-  const newActionItemsList = actionItems.items.reduce(listReducer, "").replace(/[\n\r]+$/, '');
-  // Issue not found - Create it
-  const issueBody = `
-\r
-#### ${actionItems.title} - #${actionItems.number} - ${getNow()}
-${newActionItemsList}
-`
-  aggregateIssue.body = aggregateIssue.body.concat(issueBody);
-  return updateAggregateIssue(params, aggregateIssue);
-}
-
-/**
- * Main
- */
-function main() {
-  try {
-    const params = {
-      owner: core.getInput('owner'),
-      repo: core.getInput('repo'),
-      issueNumber: core.getInput('issueNumber'),
-      aggregateIssueLabel: core.getInput('aggregateIssueLabel'),
-      token: process.env.GITHUB_TOKEN
-    }
-    core.info(`INFO: Syncing all new action items in "${params.repo}" from issue #${params.issueNumber}`);
-    core.info(`INFO: Fetching details of issue #${params.issueNumber}`);
-    // Fetch issue details and sync with aggregate issue
-    fetchIssue(params)
-      .then((issue) => {
-        core.info("INFO: Extracting action items");
-        return extractActionItems(params, issue)
-      })
-      .then((actionItems) => {
-        core.info("INFO: Fetching aggregate issue details");
-        return Promise.all([fetchAggregateIssue(params), actionItems]);
-      })
-      .then(([aggregateIssue, actionItems]) => {
-        core.info("INFO: Looking for changes and syncing...");
-        return syncAggregateIssue(params, actionItems, aggregateIssue);
-      })
-      .then(() => {
-        core.info('< 200');
-        core.setOutput(`INFO: Action items syncing completed successfully!`);
-      })
-      .catch(error => {
-        core.debug(error);
-        core.info(error.stack);
-        core.setFailed(`FATAL: Could not sync aggregate issue: ${error.message}`);
-      });
-  } catch (error) {
-    core.debug(error);
-    core.info(error.stack);
-    core.setFailed(error.message);
-  }
-}
-
-// Execute
-main();
-
-
-/***/ }),
-
-/***/ 702:
-/***/ (function(module, __unusedexports, __webpack_require__) {
-
-const { defaults } = __webpack_require__(44);
-const {
-  cleanUrl,
-  escape
-} = __webpack_require__(781);
-
-/**
- * Renderer
- */
-module.exports = class Renderer {
-  constructor(options) {
-    this.options = options || defaults;
-  }
-
-  code(code, infostring, escaped) {
-    const lang = (infostring || '').match(/\S*/)[0];
-    if (this.options.highlight) {
-      const out = this.options.highlight(code, lang);
-      if (out != null && out !== code) {
-        escaped = true;
-        code = out;
-      }
-    }
-
-    if (!lang) {
-      return '<pre><code>'
-        + (escaped ? code : escape(code, true))
-        + '</code></pre>\n';
-    }
-
-    return '<pre><code class="'
-      + this.options.langPrefix
-      + escape(lang, true)
-      + '">'
-      + (escaped ? code : escape(code, true))
-      + '</code></pre>\n';
-  }
-
-  blockquote(quote) {
-    return '<blockquote>\n' + quote + '</blockquote>\n';
-  }
-
-  html(html) {
-    return html;
-  }
-
-  heading(text, level, raw, slugger) {
-    if (this.options.headerIds) {
-      return '<h'
-        + level
-        + ' id="'
-        + this.options.headerPrefix
-        + slugger.slug(raw)
-        + '">'
-        + text
-        + '</h'
-        + level
-        + '>\n';
-    }
-    // ignore IDs
-    return '<h' + level + '>' + text + '</h' + level + '>\n';
-  }
-
-  hr() {
-    return this.options.xhtml ? '<hr/>\n' : '<hr>\n';
-  }
-
-  list(body, ordered, start) {
-    const type = ordered ? 'ol' : 'ul',
-      startatt = (ordered && start !== 1) ? (' start="' + start + '"') : '';
-    return '<' + type + startatt + '>\n' + body + '</' + type + '>\n';
-  }
-
-  listitem(text) {
-    return '<li>' + text + '</li>\n';
-  }
-
-  checkbox(checked) {
-    return '<input '
-      + (checked ? 'checked="" ' : '')
-      + 'disabled="" type="checkbox"'
-      + (this.options.xhtml ? ' /' : '')
-      + '> ';
-  }
-
-  paragraph(text) {
-    return '<p>' + text + '</p>\n';
-  }
-
-  table(header, body) {
-    if (body) body = '<tbody>' + body + '</tbody>';
-
-    return '<table>\n'
-      + '<thead>\n'
-      + header
-      + '</thead>\n'
-      + body
-      + '</table>\n';
-  }
-
-  tablerow(content) {
-    return '<tr>\n' + content + '</tr>\n';
-  }
-
-  tablecell(content, flags) {
-    const type = flags.header ? 'th' : 'td';
-    const tag = flags.align
-      ? '<' + type + ' align="' + flags.align + '">'
-      : '<' + type + '>';
-    return tag + content + '</' + type + '>\n';
-  }
-
-  // span level renderer
-  strong(text) {
-    return '<strong>' + text + '</strong>';
-  }
-
-  em(text) {
-    return '<em>' + text + '</em>';
-  }
-
-  codespan(text) {
-    return '<code>' + text + '</code>';
-  }
-
-  br() {
-    return this.options.xhtml ? '<br/>' : '<br>';
-  }
-
-  del(text) {
-    return '<del>' + text + '</del>';
-  }
-
-  link(href, title, text) {
-    href = cleanUrl(this.options.sanitize, this.options.baseUrl, href);
-    if (href === null) {
-      return text;
-    }
-    let out = '<a href="' + escape(href) + '"';
-    if (title) {
-      out += ' title="' + title + '"';
-    }
-    out += '>' + text + '</a>';
-    return out;
-  }
-
-  image(href, title, text) {
-    href = cleanUrl(this.options.sanitize, this.options.baseUrl, href);
-    if (href === null) {
-      return text;
-    }
-
-    let out = '<img src="' + href + '" alt="' + text + '"';
-    if (title) {
-      out += ' title="' + title + '"';
-    }
-    out += this.options.xhtml ? '/>' : '>';
-    return out;
-  }
-
-  text(text) {
-    return text;
-  }
-};
-
-
-/***/ }),
-
-/***/ 761:
-/***/ (function(module) {
-
-module.exports = require("zlib");
-
-/***/ }),
-
-/***/ 770:
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var Stream = _interopDefault(__webpack_require__(413));
-var http = _interopDefault(__webpack_require__(605));
-var Url = _interopDefault(__webpack_require__(835));
-var https = _interopDefault(__webpack_require__(211));
-var zlib = _interopDefault(__webpack_require__(761));
-
-// Based on https://github.com/tmpvar/jsdom/blob/aa85b2abf07766ff7bf5c1f6daafb3726f2f2db5/lib/jsdom/living/blob.js
-
-// fix for "Readable" isn't a named export issue
-const Readable = Stream.Readable;
-
-const BUFFER = Symbol('buffer');
-const TYPE = Symbol('type');
-
-class Blob {
-	constructor() {
-		this[TYPE] = '';
-
-		const blobParts = arguments[0];
-		const options = arguments[1];
-
-		const buffers = [];
-		let size = 0;
-
-		if (blobParts) {
-			const a = blobParts;
-			const length = Number(a.length);
-			for (let i = 0; i < length; i++) {
-				const element = a[i];
-				let buffer;
-				if (element instanceof Buffer) {
-					buffer = element;
-				} else if (ArrayBuffer.isView(element)) {
-					buffer = Buffer.from(element.buffer, element.byteOffset, element.byteLength);
-				} else if (element instanceof ArrayBuffer) {
-					buffer = Buffer.from(element);
-				} else if (element instanceof Blob) {
-					buffer = element[BUFFER];
-				} else {
-					buffer = Buffer.from(typeof element === 'string' ? element : String(element));
-				}
-				size += buffer.length;
-				buffers.push(buffer);
-			}
-		}
-
-		this[BUFFER] = Buffer.concat(buffers);
-
-		let type = options && options.type !== undefined && String(options.type).toLowerCase();
-		if (type && !/[^\u0020-\u007E]/.test(type)) {
-			this[TYPE] = type;
-		}
-	}
-	get size() {
-		return this[BUFFER].length;
-	}
-	get type() {
-		return this[TYPE];
-	}
-	text() {
-		return Promise.resolve(this[BUFFER].toString());
-	}
-	arrayBuffer() {
-		const buf = this[BUFFER];
-		const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-		return Promise.resolve(ab);
-	}
-	stream() {
-		const readable = new Readable();
-		readable._read = function () {};
-		readable.push(this[BUFFER]);
-		readable.push(null);
-		return readable;
-	}
-	toString() {
-		return '[object Blob]';
-	}
-	slice() {
-		const size = this.size;
-
-		const start = arguments[0];
-		const end = arguments[1];
-		let relativeStart, relativeEnd;
-		if (start === undefined) {
-			relativeStart = 0;
-		} else if (start < 0) {
-			relativeStart = Math.max(size + start, 0);
-		} else {
-			relativeStart = Math.min(start, size);
-		}
-		if (end === undefined) {
-			relativeEnd = size;
-		} else if (end < 0) {
-			relativeEnd = Math.max(size + end, 0);
-		} else {
-			relativeEnd = Math.min(end, size);
-		}
-		const span = Math.max(relativeEnd - relativeStart, 0);
-
-		const buffer = this[BUFFER];
-		const slicedBuffer = buffer.slice(relativeStart, relativeStart + span);
-		const blob = new Blob([], { type: arguments[2] });
-		blob[BUFFER] = slicedBuffer;
-		return blob;
-	}
-}
-
-Object.defineProperties(Blob.prototype, {
-	size: { enumerable: true },
-	type: { enumerable: true },
-	slice: { enumerable: true }
-});
-
-Object.defineProperty(Blob.prototype, Symbol.toStringTag, {
-	value: 'Blob',
-	writable: false,
-	enumerable: false,
-	configurable: true
-});
-
-/**
- * fetch-error.js
- *
- * FetchError interface for operational errors
- */
-
-/**
- * Create FetchError instance
- *
- * @param   String      message      Error message for human
- * @param   String      type         Error type for machine
- * @param   String      systemError  For Node.js system error
- * @return  FetchError
- */
-function FetchError(message, type, systemError) {
-  Error.call(this, message);
-
-  this.message = message;
-  this.type = type;
-
-  // when err.type is `system`, err.code contains system error code
-  if (systemError) {
-    this.code = this.errno = systemError.code;
-  }
-
-  // hide custom error implementation details from end-users
-  Error.captureStackTrace(this, this.constructor);
-}
-
-FetchError.prototype = Object.create(Error.prototype);
-FetchError.prototype.constructor = FetchError;
-FetchError.prototype.name = 'FetchError';
-
-let convert;
-try {
-	convert = __webpack_require__(110).convert;
-} catch (e) {}
-
-const INTERNALS = Symbol('Body internals');
-
-// fix an issue where "PassThrough" isn't a named export for node <10
-const PassThrough = Stream.PassThrough;
-
-/**
- * Body mixin
- *
- * Ref: https://fetch.spec.whatwg.org/#body
- *
- * @param   Stream  body  Readable stream
- * @param   Object  opts  Response options
- * @return  Void
- */
-function Body(body) {
-	var _this = this;
-
-	var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-	    _ref$size = _ref.size;
-
-	let size = _ref$size === undefined ? 0 : _ref$size;
-	var _ref$timeout = _ref.timeout;
-	let timeout = _ref$timeout === undefined ? 0 : _ref$timeout;
-
-	if (body == null) {
-		// body is undefined or null
-		body = null;
-	} else if (isURLSearchParams(body)) {
-		// body is a URLSearchParams
-		body = Buffer.from(body.toString());
-	} else if (isBlob(body)) ; else if (Buffer.isBuffer(body)) ; else if (Object.prototype.toString.call(body) === '[object ArrayBuffer]') {
-		// body is ArrayBuffer
-		body = Buffer.from(body);
-	} else if (ArrayBuffer.isView(body)) {
-		// body is ArrayBufferView
-		body = Buffer.from(body.buffer, body.byteOffset, body.byteLength);
-	} else if (body instanceof Stream) ; else {
-		// none of the above
-		// coerce to string then buffer
-		body = Buffer.from(String(body));
-	}
-	this[INTERNALS] = {
-		body,
-		disturbed: false,
-		error: null
-	};
-	this.size = size;
-	this.timeout = timeout;
-
-	if (body instanceof Stream) {
-		body.on('error', function (err) {
-			const error = err.name === 'AbortError' ? err : new FetchError(`Invalid response body while trying to fetch ${_this.url}: ${err.message}`, 'system', err);
-			_this[INTERNALS].error = error;
-		});
-	}
-}
-
-Body.prototype = {
-	get body() {
-		return this[INTERNALS].body;
-	},
-
-	get bodyUsed() {
-		return this[INTERNALS].disturbed;
-	},
-
-	/**
-  * Decode response as ArrayBuffer
-  *
-  * @return  Promise
-  */
-	arrayBuffer() {
-		return consumeBody.call(this).then(function (buf) {
-			return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-		});
-	},
-
-	/**
-  * Return raw response as Blob
-  *
-  * @return Promise
-  */
-	blob() {
-		let ct = this.headers && this.headers.get('content-type') || '';
-		return consumeBody.call(this).then(function (buf) {
-			return Object.assign(
-			// Prevent copying
-			new Blob([], {
-				type: ct.toLowerCase()
-			}), {
-				[BUFFER]: buf
-			});
-		});
-	},
-
-	/**
-  * Decode response as json
-  *
-  * @return  Promise
-  */
-	json() {
-		var _this2 = this;
-
-		return consumeBody.call(this).then(function (buffer) {
-			try {
-				return JSON.parse(buffer.toString());
-			} catch (err) {
-				return Body.Promise.reject(new FetchError(`invalid json response body at ${_this2.url} reason: ${err.message}`, 'invalid-json'));
-			}
-		});
-	},
-
-	/**
-  * Decode response as text
-  *
-  * @return  Promise
-  */
-	text() {
-		return consumeBody.call(this).then(function (buffer) {
-			return buffer.toString();
-		});
-	},
-
-	/**
-  * Decode response as buffer (non-spec api)
-  *
-  * @return  Promise
-  */
-	buffer() {
-		return consumeBody.call(this);
-	},
-
-	/**
-  * Decode response as text, while automatically detecting the encoding and
-  * trying to decode to UTF-8 (non-spec api)
-  *
-  * @return  Promise
-  */
-	textConverted() {
-		var _this3 = this;
-
-		return consumeBody.call(this).then(function (buffer) {
-			return convertBody(buffer, _this3.headers);
-		});
-	}
-};
-
-// In browsers, all properties are enumerable.
-Object.defineProperties(Body.prototype, {
-	body: { enumerable: true },
-	bodyUsed: { enumerable: true },
-	arrayBuffer: { enumerable: true },
-	blob: { enumerable: true },
-	json: { enumerable: true },
-	text: { enumerable: true }
-});
-
-Body.mixIn = function (proto) {
-	for (const name of Object.getOwnPropertyNames(Body.prototype)) {
-		// istanbul ignore else: future proof
-		if (!(name in proto)) {
-			const desc = Object.getOwnPropertyDescriptor(Body.prototype, name);
-			Object.defineProperty(proto, name, desc);
-		}
-	}
-};
-
-/**
- * Consume and convert an entire Body to a Buffer.
- *
- * Ref: https://fetch.spec.whatwg.org/#concept-body-consume-body
- *
- * @return  Promise
- */
-function consumeBody() {
-	var _this4 = this;
-
-	if (this[INTERNALS].disturbed) {
-		return Body.Promise.reject(new TypeError(`body used already for: ${this.url}`));
-	}
-
-	this[INTERNALS].disturbed = true;
-
-	if (this[INTERNALS].error) {
-		return Body.Promise.reject(this[INTERNALS].error);
-	}
-
-	let body = this.body;
-
-	// body is null
-	if (body === null) {
-		return Body.Promise.resolve(Buffer.alloc(0));
-	}
-
-	// body is blob
-	if (isBlob(body)) {
-		body = body.stream();
-	}
-
-	// body is buffer
-	if (Buffer.isBuffer(body)) {
-		return Body.Promise.resolve(body);
-	}
-
-	// istanbul ignore if: should never happen
-	if (!(body instanceof Stream)) {
-		return Body.Promise.resolve(Buffer.alloc(0));
-	}
-
-	// body is stream
-	// get ready to actually consume the body
-	let accum = [];
-	let accumBytes = 0;
-	let abort = false;
-
-	return new Body.Promise(function (resolve, reject) {
-		let resTimeout;
-
-		// allow timeout on slow response body
-		if (_this4.timeout) {
-			resTimeout = setTimeout(function () {
-				abort = true;
-				reject(new FetchError(`Response timeout while trying to fetch ${_this4.url} (over ${_this4.timeout}ms)`, 'body-timeout'));
-			}, _this4.timeout);
-		}
-
-		// handle stream errors
-		body.on('error', function (err) {
-			if (err.name === 'AbortError') {
-				// if the request was aborted, reject with this Error
-				abort = true;
-				reject(err);
-			} else {
-				// other errors, such as incorrect content-encoding
-				reject(new FetchError(`Invalid response body while trying to fetch ${_this4.url}: ${err.message}`, 'system', err));
-			}
-		});
-
-		body.on('data', function (chunk) {
-			if (abort || chunk === null) {
-				return;
-			}
-
-			if (_this4.size && accumBytes + chunk.length > _this4.size) {
-				abort = true;
-				reject(new FetchError(`content size at ${_this4.url} over limit: ${_this4.size}`, 'max-size'));
-				return;
-			}
-
-			accumBytes += chunk.length;
-			accum.push(chunk);
-		});
-
-		body.on('end', function () {
-			if (abort) {
-				return;
-			}
-
-			clearTimeout(resTimeout);
-
-			try {
-				resolve(Buffer.concat(accum, accumBytes));
-			} catch (err) {
-				// handle streams that have accumulated too much data (issue #414)
-				reject(new FetchError(`Could not create Buffer from response body for ${_this4.url}: ${err.message}`, 'system', err));
-			}
-		});
-	});
-}
-
-/**
- * Detect buffer encoding and convert to target encoding
- * ref: http://www.w3.org/TR/2011/WD-html5-20110113/parsing.html#determining-the-character-encoding
- *
- * @param   Buffer  buffer    Incoming buffer
- * @param   String  encoding  Target encoding
- * @return  String
- */
-function convertBody(buffer, headers) {
-	if (typeof convert !== 'function') {
-		throw new Error('The package `encoding` must be installed to use the textConverted() function');
-	}
-
-	const ct = headers.get('content-type');
-	let charset = 'utf-8';
-	let res, str;
-
-	// header
-	if (ct) {
-		res = /charset=([^;]*)/i.exec(ct);
-	}
-
-	// no charset in content type, peek at response body for at most 1024 bytes
-	str = buffer.slice(0, 1024).toString();
-
-	// html5
-	if (!res && str) {
-		res = /<meta.+?charset=(['"])(.+?)\1/i.exec(str);
-	}
-
-	// html4
-	if (!res && str) {
-		res = /<meta[\s]+?http-equiv=(['"])content-type\1[\s]+?content=(['"])(.+?)\2/i.exec(str);
-		if (!res) {
-			res = /<meta[\s]+?content=(['"])(.+?)\1[\s]+?http-equiv=(['"])content-type\3/i.exec(str);
-			if (res) {
-				res.pop(); // drop last quote
-			}
-		}
-
-		if (res) {
-			res = /charset=(.*)/i.exec(res.pop());
-		}
-	}
-
-	// xml
-	if (!res && str) {
-		res = /<\?xml.+?encoding=(['"])(.+?)\1/i.exec(str);
-	}
-
-	// found charset
-	if (res) {
-		charset = res.pop();
-
-		// prevent decode issues when sites use incorrect encoding
-		// ref: https://hsivonen.fi/encoding-menu/
-		if (charset === 'gb2312' || charset === 'gbk') {
-			charset = 'gb18030';
-		}
-	}
-
-	// turn raw buffers into a single utf-8 buffer
-	return convert(buffer, 'UTF-8', charset).toString();
-}
-
-/**
- * Detect a URLSearchParams object
- * ref: https://github.com/bitinn/node-fetch/issues/296#issuecomment-307598143
- *
- * @param   Object  obj     Object to detect by type or brand
- * @return  String
- */
-function isURLSearchParams(obj) {
-	// Duck-typing as a necessary condition.
-	if (typeof obj !== 'object' || typeof obj.append !== 'function' || typeof obj.delete !== 'function' || typeof obj.get !== 'function' || typeof obj.getAll !== 'function' || typeof obj.has !== 'function' || typeof obj.set !== 'function') {
-		return false;
-	}
-
-	// Brand-checking and more duck-typing as optional condition.
-	return obj.constructor.name === 'URLSearchParams' || Object.prototype.toString.call(obj) === '[object URLSearchParams]' || typeof obj.sort === 'function';
-}
-
-/**
- * Check if `obj` is a W3C `Blob` object (which `File` inherits from)
- * @param  {*} obj
- * @return {boolean}
- */
-function isBlob(obj) {
-	return typeof obj === 'object' && typeof obj.arrayBuffer === 'function' && typeof obj.type === 'string' && typeof obj.stream === 'function' && typeof obj.constructor === 'function' && typeof obj.constructor.name === 'string' && /^(Blob|File)$/.test(obj.constructor.name) && /^(Blob|File)$/.test(obj[Symbol.toStringTag]);
-}
-
-/**
- * Clone body given Res/Req instance
- *
- * @param   Mixed  instance  Response or Request instance
- * @return  Mixed
- */
-function clone(instance) {
-	let p1, p2;
-	let body = instance.body;
-
-	// don't allow cloning a used body
-	if (instance.bodyUsed) {
-		throw new Error('cannot clone body after it is used');
-	}
-
-	// check that body is a stream and not form-data object
-	// note: we can't clone the form-data object without having it as a dependency
-	if (body instanceof Stream && typeof body.getBoundary !== 'function') {
-		// tee instance body
-		p1 = new PassThrough();
-		p2 = new PassThrough();
-		body.pipe(p1);
-		body.pipe(p2);
-		// set instance body to teed body and return the other teed body
-		instance[INTERNALS].body = p1;
-		body = p2;
-	}
-
-	return body;
-}
-
-/**
- * Performs the operation "extract a `Content-Type` value from |object|" as
- * specified in the specification:
- * https://fetch.spec.whatwg.org/#concept-bodyinit-extract
- *
- * This function assumes that instance.body is present.
- *
- * @param   Mixed  instance  Any options.body input
- */
-function extractContentType(body) {
-	if (body === null) {
-		// body is null
-		return null;
-	} else if (typeof body === 'string') {
-		// body is string
-		return 'text/plain;charset=UTF-8';
-	} else if (isURLSearchParams(body)) {
-		// body is a URLSearchParams
-		return 'application/x-www-form-urlencoded;charset=UTF-8';
-	} else if (isBlob(body)) {
-		// body is blob
-		return body.type || null;
-	} else if (Buffer.isBuffer(body)) {
-		// body is buffer
-		return null;
-	} else if (Object.prototype.toString.call(body) === '[object ArrayBuffer]') {
-		// body is ArrayBuffer
-		return null;
-	} else if (ArrayBuffer.isView(body)) {
-		// body is ArrayBufferView
-		return null;
-	} else if (typeof body.getBoundary === 'function') {
-		// detect form data input from form-data module
-		return `multipart/form-data;boundary=${body.getBoundary()}`;
-	} else if (body instanceof Stream) {
-		// body is stream
-		// can't really do much about this
-		return null;
-	} else {
-		// Body constructor defaults other things to string
-		return 'text/plain;charset=UTF-8';
-	}
-}
-
-/**
- * The Fetch Standard treats this as if "total bytes" is a property on the body.
- * For us, we have to explicitly get it with a function.
- *
- * ref: https://fetch.spec.whatwg.org/#concept-body-total-bytes
- *
- * @param   Body    instance   Instance of Body
- * @return  Number?            Number of bytes, or null if not possible
- */
-function getTotalBytes(instance) {
-	const body = instance.body;
-
-
-	if (body === null) {
-		// body is null
-		return 0;
-	} else if (isBlob(body)) {
-		return body.size;
-	} else if (Buffer.isBuffer(body)) {
-		// body is buffer
-		return body.length;
-	} else if (body && typeof body.getLengthSync === 'function') {
-		// detect form data input from form-data module
-		if (body._lengthRetrievers && body._lengthRetrievers.length == 0 || // 1.x
-		body.hasKnownLength && body.hasKnownLength()) {
-			// 2.x
-			return body.getLengthSync();
-		}
-		return null;
-	} else {
-		// body is stream
-		return null;
-	}
-}
-
-/**
- * Write a Body to a Node.js WritableStream (e.g. http.Request) object.
- *
- * @param   Body    instance   Instance of Body
- * @return  Void
- */
-function writeToStream(dest, instance) {
-	const body = instance.body;
-
-
-	if (body === null) {
-		// body is null
-		dest.end();
-	} else if (isBlob(body)) {
-		body.stream().pipe(dest);
-	} else if (Buffer.isBuffer(body)) {
-		// body is buffer
-		dest.write(body);
-		dest.end();
-	} else {
-		// body is stream
-		body.pipe(dest);
-	}
-}
-
-// expose Promise
-Body.Promise = global.Promise;
-
-/**
- * headers.js
- *
- * Headers class offers convenient helpers
- */
-
-const invalidTokenRegex = /[^\^_`a-zA-Z\-0-9!#$%&'*+.|~]/;
-const invalidHeaderCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
-
-function validateName(name) {
-	name = `${name}`;
-	if (invalidTokenRegex.test(name) || name === '') {
-		throw new TypeError(`${name} is not a legal HTTP header name`);
-	}
-}
-
-function validateValue(value) {
-	value = `${value}`;
-	if (invalidHeaderCharRegex.test(value)) {
-		throw new TypeError(`${value} is not a legal HTTP header value`);
-	}
-}
-
-/**
- * Find the key in the map object given a header name.
- *
- * Returns undefined if not found.
- *
- * @param   String  name  Header name
- * @return  String|Undefined
- */
-function find(map, name) {
-	name = name.toLowerCase();
-	for (const key in map) {
-		if (key.toLowerCase() === name) {
-			return key;
-		}
-	}
-	return undefined;
-}
-
-const MAP = Symbol('map');
-class Headers {
-	/**
-  * Headers class
-  *
-  * @param   Object  headers  Response headers
-  * @return  Void
-  */
-	constructor() {
-		let init = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : undefined;
-
-		this[MAP] = Object.create(null);
-
-		if (init instanceof Headers) {
-			const rawHeaders = init.raw();
-			const headerNames = Object.keys(rawHeaders);
-
-			for (const headerName of headerNames) {
-				for (const value of rawHeaders[headerName]) {
-					this.append(headerName, value);
-				}
-			}
-
-			return;
-		}
-
-		// We don't worry about converting prop to ByteString here as append()
-		// will handle it.
-		if (init == null) ; else if (typeof init === 'object') {
-			const method = init[Symbol.iterator];
-			if (method != null) {
-				if (typeof method !== 'function') {
-					throw new TypeError('Header pairs must be iterable');
-				}
-
-				// sequence<sequence<ByteString>>
-				// Note: per spec we have to first exhaust the lists then process them
-				const pairs = [];
-				for (const pair of init) {
-					if (typeof pair !== 'object' || typeof pair[Symbol.iterator] !== 'function') {
-						throw new TypeError('Each header pair must be iterable');
-					}
-					pairs.push(Array.from(pair));
-				}
-
-				for (const pair of pairs) {
-					if (pair.length !== 2) {
-						throw new TypeError('Each header pair must be a name/value tuple');
-					}
-					this.append(pair[0], pair[1]);
-				}
-			} else {
-				// record<ByteString, ByteString>
-				for (const key of Object.keys(init)) {
-					const value = init[key];
-					this.append(key, value);
-				}
-			}
-		} else {
-			throw new TypeError('Provided initializer must be an object');
-		}
-	}
-
-	/**
-  * Return combined header value given name
-  *
-  * @param   String  name  Header name
-  * @return  Mixed
-  */
-	get(name) {
-		name = `${name}`;
-		validateName(name);
-		const key = find(this[MAP], name);
-		if (key === undefined) {
-			return null;
-		}
-
-		return this[MAP][key].join(', ');
-	}
-
-	/**
-  * Iterate over all headers
-  *
-  * @param   Function  callback  Executed for each item with parameters (value, name, thisArg)
-  * @param   Boolean   thisArg   `this` context for callback function
-  * @return  Void
-  */
-	forEach(callback) {
-		let thisArg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : undefined;
-
-		let pairs = getHeaders(this);
-		let i = 0;
-		while (i < pairs.length) {
-			var _pairs$i = pairs[i];
-			const name = _pairs$i[0],
-			      value = _pairs$i[1];
-
-			callback.call(thisArg, value, name, this);
-			pairs = getHeaders(this);
-			i++;
-		}
-	}
-
-	/**
-  * Overwrite header values given name
-  *
-  * @param   String  name   Header name
-  * @param   String  value  Header value
-  * @return  Void
-  */
-	set(name, value) {
-		name = `${name}`;
-		value = `${value}`;
-		validateName(name);
-		validateValue(value);
-		const key = find(this[MAP], name);
-		this[MAP][key !== undefined ? key : name] = [value];
-	}
-
-	/**
-  * Append a value onto existing header
-  *
-  * @param   String  name   Header name
-  * @param   String  value  Header value
-  * @return  Void
-  */
-	append(name, value) {
-		name = `${name}`;
-		value = `${value}`;
-		validateName(name);
-		validateValue(value);
-		const key = find(this[MAP], name);
-		if (key !== undefined) {
-			this[MAP][key].push(value);
-		} else {
-			this[MAP][name] = [value];
-		}
-	}
-
-	/**
-  * Check for header name existence
-  *
-  * @param   String   name  Header name
-  * @return  Boolean
-  */
-	has(name) {
-		name = `${name}`;
-		validateName(name);
-		return find(this[MAP], name) !== undefined;
-	}
-
-	/**
-  * Delete all header values given name
-  *
-  * @param   String  name  Header name
-  * @return  Void
-  */
-	delete(name) {
-		name = `${name}`;
-		validateName(name);
-		const key = find(this[MAP], name);
-		if (key !== undefined) {
-			delete this[MAP][key];
-		}
-	}
-
-	/**
-  * Return raw headers (non-spec api)
-  *
-  * @return  Object
-  */
-	raw() {
-		return this[MAP];
-	}
-
-	/**
-  * Get an iterator on keys.
-  *
-  * @return  Iterator
-  */
-	keys() {
-		return createHeadersIterator(this, 'key');
-	}
-
-	/**
-  * Get an iterator on values.
-  *
-  * @return  Iterator
-  */
-	values() {
-		return createHeadersIterator(this, 'value');
-	}
-
-	/**
-  * Get an iterator on entries.
-  *
-  * This is the default iterator of the Headers object.
-  *
-  * @return  Iterator
-  */
-	[Symbol.iterator]() {
-		return createHeadersIterator(this, 'key+value');
-	}
-}
-Headers.prototype.entries = Headers.prototype[Symbol.iterator];
-
-Object.defineProperty(Headers.prototype, Symbol.toStringTag, {
-	value: 'Headers',
-	writable: false,
-	enumerable: false,
-	configurable: true
-});
-
-Object.defineProperties(Headers.prototype, {
-	get: { enumerable: true },
-	forEach: { enumerable: true },
-	set: { enumerable: true },
-	append: { enumerable: true },
-	has: { enumerable: true },
-	delete: { enumerable: true },
-	keys: { enumerable: true },
-	values: { enumerable: true },
-	entries: { enumerable: true }
-});
-
-function getHeaders(headers) {
-	let kind = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'key+value';
-
-	const keys = Object.keys(headers[MAP]).sort();
-	return keys.map(kind === 'key' ? function (k) {
-		return k.toLowerCase();
-	} : kind === 'value' ? function (k) {
-		return headers[MAP][k].join(', ');
-	} : function (k) {
-		return [k.toLowerCase(), headers[MAP][k].join(', ')];
-	});
-}
-
-const INTERNAL = Symbol('internal');
-
-function createHeadersIterator(target, kind) {
-	const iterator = Object.create(HeadersIteratorPrototype);
-	iterator[INTERNAL] = {
-		target,
-		kind,
-		index: 0
-	};
-	return iterator;
-}
-
-const HeadersIteratorPrototype = Object.setPrototypeOf({
-	next() {
-		// istanbul ignore if
-		if (!this || Object.getPrototypeOf(this) !== HeadersIteratorPrototype) {
-			throw new TypeError('Value of `this` is not a HeadersIterator');
-		}
-
-		var _INTERNAL = this[INTERNAL];
-		const target = _INTERNAL.target,
-		      kind = _INTERNAL.kind,
-		      index = _INTERNAL.index;
-
-		const values = getHeaders(target, kind);
-		const len = values.length;
-		if (index >= len) {
-			return {
-				value: undefined,
-				done: true
-			};
-		}
-
-		this[INTERNAL].index = index + 1;
-
-		return {
-			value: values[index],
-			done: false
-		};
-	}
-}, Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())));
-
-Object.defineProperty(HeadersIteratorPrototype, Symbol.toStringTag, {
-	value: 'HeadersIterator',
-	writable: false,
-	enumerable: false,
-	configurable: true
-});
-
-/**
- * Export the Headers object in a form that Node.js can consume.
- *
- * @param   Headers  headers
- * @return  Object
- */
-function exportNodeCompatibleHeaders(headers) {
-	const obj = Object.assign({ __proto__: null }, headers[MAP]);
-
-	// http.request() only supports string as Host header. This hack makes
-	// specifying custom Host header possible.
-	const hostHeaderKey = find(headers[MAP], 'Host');
-	if (hostHeaderKey !== undefined) {
-		obj[hostHeaderKey] = obj[hostHeaderKey][0];
-	}
-
-	return obj;
-}
-
-/**
- * Create a Headers object from an object of headers, ignoring those that do
- * not conform to HTTP grammar productions.
- *
- * @param   Object  obj  Object of headers
- * @return  Headers
- */
-function createHeadersLenient(obj) {
-	const headers = new Headers();
-	for (const name of Object.keys(obj)) {
-		if (invalidTokenRegex.test(name)) {
-			continue;
-		}
-		if (Array.isArray(obj[name])) {
-			for (const val of obj[name]) {
-				if (invalidHeaderCharRegex.test(val)) {
-					continue;
-				}
-				if (headers[MAP][name] === undefined) {
-					headers[MAP][name] = [val];
-				} else {
-					headers[MAP][name].push(val);
-				}
-			}
-		} else if (!invalidHeaderCharRegex.test(obj[name])) {
-			headers[MAP][name] = [obj[name]];
-		}
-	}
-	return headers;
-}
-
-const INTERNALS$1 = Symbol('Response internals');
-
-// fix an issue where "STATUS_CODES" aren't a named export for node <10
-const STATUS_CODES = http.STATUS_CODES;
-
-/**
- * Response class
- *
- * @param   Stream  body  Readable stream
- * @param   Object  opts  Response options
- * @return  Void
- */
-class Response {
-	constructor() {
-		let body = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-		let opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-		Body.call(this, body, opts);
-
-		const status = opts.status || 200;
-		const headers = new Headers(opts.headers);
-
-		if (body != null && !headers.has('Content-Type')) {
-			const contentType = extractContentType(body);
-			if (contentType) {
-				headers.append('Content-Type', contentType);
-			}
-		}
-
-		this[INTERNALS$1] = {
-			url: opts.url,
-			status,
-			statusText: opts.statusText || STATUS_CODES[status],
-			headers,
-			counter: opts.counter
-		};
-	}
-
-	get url() {
-		return this[INTERNALS$1].url || '';
-	}
-
-	get status() {
-		return this[INTERNALS$1].status;
-	}
-
-	/**
-  * Convenience property representing if the request ended normally
-  */
-	get ok() {
-		return this[INTERNALS$1].status >= 200 && this[INTERNALS$1].status < 300;
-	}
-
-	get redirected() {
-		return this[INTERNALS$1].counter > 0;
-	}
-
-	get statusText() {
-		return this[INTERNALS$1].statusText;
-	}
-
-	get headers() {
-		return this[INTERNALS$1].headers;
-	}
-
-	/**
-  * Clone this response
-  *
-  * @return  Response
-  */
-	clone() {
-		return new Response(clone(this), {
-			url: this.url,
-			status: this.status,
-			statusText: this.statusText,
-			headers: this.headers,
-			ok: this.ok,
-			redirected: this.redirected
-		});
-	}
-}
-
-Body.mixIn(Response.prototype);
-
-Object.defineProperties(Response.prototype, {
-	url: { enumerable: true },
-	status: { enumerable: true },
-	ok: { enumerable: true },
-	redirected: { enumerable: true },
-	statusText: { enumerable: true },
-	headers: { enumerable: true },
-	clone: { enumerable: true }
-});
-
-Object.defineProperty(Response.prototype, Symbol.toStringTag, {
-	value: 'Response',
-	writable: false,
-	enumerable: false,
-	configurable: true
-});
-
-const INTERNALS$2 = Symbol('Request internals');
-
-// fix an issue where "format", "parse" aren't a named export for node <10
-const parse_url = Url.parse;
-const format_url = Url.format;
-
-const streamDestructionSupported = 'destroy' in Stream.Readable.prototype;
-
-/**
- * Check if a value is an instance of Request.
- *
- * @param   Mixed   input
- * @return  Boolean
- */
-function isRequest(input) {
-	return typeof input === 'object' && typeof input[INTERNALS$2] === 'object';
-}
-
-function isAbortSignal(signal) {
-	const proto = signal && typeof signal === 'object' && Object.getPrototypeOf(signal);
-	return !!(proto && proto.constructor.name === 'AbortSignal');
-}
-
-/**
- * Request class
- *
- * @param   Mixed   input  Url or Request instance
- * @param   Object  init   Custom options
- * @return  Void
- */
-class Request {
-	constructor(input) {
-		let init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-		let parsedURL;
-
-		// normalize input
-		if (!isRequest(input)) {
-			if (input && input.href) {
-				// in order to support Node.js' Url objects; though WHATWG's URL objects
-				// will fall into this branch also (since their `toString()` will return
-				// `href` property anyway)
-				parsedURL = parse_url(input.href);
-			} else {
-				// coerce input to a string before attempting to parse
-				parsedURL = parse_url(`${input}`);
-			}
-			input = {};
-		} else {
-			parsedURL = parse_url(input.url);
-		}
-
-		let method = init.method || input.method || 'GET';
-		method = method.toUpperCase();
-
-		if ((init.body != null || isRequest(input) && input.body !== null) && (method === 'GET' || method === 'HEAD')) {
-			throw new TypeError('Request with GET/HEAD method cannot have body');
-		}
-
-		let inputBody = init.body != null ? init.body : isRequest(input) && input.body !== null ? clone(input) : null;
-
-		Body.call(this, inputBody, {
-			timeout: init.timeout || input.timeout || 0,
-			size: init.size || input.size || 0
-		});
-
-		const headers = new Headers(init.headers || input.headers || {});
-
-		if (inputBody != null && !headers.has('Content-Type')) {
-			const contentType = extractContentType(inputBody);
-			if (contentType) {
-				headers.append('Content-Type', contentType);
-			}
-		}
-
-		let signal = isRequest(input) ? input.signal : null;
-		if ('signal' in init) signal = init.signal;
-
-		if (signal != null && !isAbortSignal(signal)) {
-			throw new TypeError('Expected signal to be an instanceof AbortSignal');
-		}
-
-		this[INTERNALS$2] = {
-			method,
-			redirect: init.redirect || input.redirect || 'follow',
-			headers,
-			parsedURL,
-			signal
-		};
-
-		// node-fetch-only options
-		this.follow = init.follow !== undefined ? init.follow : input.follow !== undefined ? input.follow : 20;
-		this.compress = init.compress !== undefined ? init.compress : input.compress !== undefined ? input.compress : true;
-		this.counter = init.counter || input.counter || 0;
-		this.agent = init.agent || input.agent;
-	}
-
-	get method() {
-		return this[INTERNALS$2].method;
-	}
-
-	get url() {
-		return format_url(this[INTERNALS$2].parsedURL);
-	}
-
-	get headers() {
-		return this[INTERNALS$2].headers;
-	}
-
-	get redirect() {
-		return this[INTERNALS$2].redirect;
-	}
-
-	get signal() {
-		return this[INTERNALS$2].signal;
-	}
-
-	/**
-  * Clone this request
-  *
-  * @return  Request
-  */
-	clone() {
-		return new Request(this);
-	}
-}
-
-Body.mixIn(Request.prototype);
-
-Object.defineProperty(Request.prototype, Symbol.toStringTag, {
-	value: 'Request',
-	writable: false,
-	enumerable: false,
-	configurable: true
-});
-
-Object.defineProperties(Request.prototype, {
-	method: { enumerable: true },
-	url: { enumerable: true },
-	headers: { enumerable: true },
-	redirect: { enumerable: true },
-	clone: { enumerable: true },
-	signal: { enumerable: true }
-});
-
-/**
- * Convert a Request to Node.js http request options.
- *
- * @param   Request  A Request instance
- * @return  Object   The options object to be passed to http.request
- */
-function getNodeRequestOptions(request) {
-	const parsedURL = request[INTERNALS$2].parsedURL;
-	const headers = new Headers(request[INTERNALS$2].headers);
-
-	// fetch step 1.3
-	if (!headers.has('Accept')) {
-		headers.set('Accept', '*/*');
-	}
-
-	// Basic fetch
-	if (!parsedURL.protocol || !parsedURL.hostname) {
-		throw new TypeError('Only absolute URLs are supported');
-	}
-
-	if (!/^https?:$/.test(parsedURL.protocol)) {
-		throw new TypeError('Only HTTP(S) protocols are supported');
-	}
-
-	if (request.signal && request.body instanceof Stream.Readable && !streamDestructionSupported) {
-		throw new Error('Cancellation of streamed requests with AbortSignal is not supported in node < 8');
-	}
-
-	// HTTP-network-or-cache fetch steps 2.4-2.7
-	let contentLengthValue = null;
-	if (request.body == null && /^(POST|PUT)$/i.test(request.method)) {
-		contentLengthValue = '0';
-	}
-	if (request.body != null) {
-		const totalBytes = getTotalBytes(request);
-		if (typeof totalBytes === 'number') {
-			contentLengthValue = String(totalBytes);
-		}
-	}
-	if (contentLengthValue) {
-		headers.set('Content-Length', contentLengthValue);
-	}
-
-	// HTTP-network-or-cache fetch step 2.11
-	if (!headers.has('User-Agent')) {
-		headers.set('User-Agent', 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)');
-	}
-
-	// HTTP-network-or-cache fetch step 2.15
-	if (request.compress && !headers.has('Accept-Encoding')) {
-		headers.set('Accept-Encoding', 'gzip,deflate');
-	}
-
-	let agent = request.agent;
-	if (typeof agent === 'function') {
-		agent = agent(parsedURL);
-	}
-
-	if (!headers.has('Connection') && !agent) {
-		headers.set('Connection', 'close');
-	}
-
-	// HTTP-network fetch step 4.2
-	// chunked encoding is handled by Node.js
-
-	return Object.assign({}, parsedURL, {
-		method: request.method,
-		headers: exportNodeCompatibleHeaders(headers),
-		agent
-	});
-}
-
-/**
- * abort-error.js
- *
- * AbortError interface for cancelled requests
- */
-
-/**
- * Create AbortError instance
- *
- * @param   String      message      Error message for human
- * @return  AbortError
- */
-function AbortError(message) {
-  Error.call(this, message);
-
-  this.type = 'aborted';
-  this.message = message;
-
-  // hide custom error implementation details from end-users
-  Error.captureStackTrace(this, this.constructor);
-}
-
-AbortError.prototype = Object.create(Error.prototype);
-AbortError.prototype.constructor = AbortError;
-AbortError.prototype.name = 'AbortError';
-
-// fix an issue where "PassThrough", "resolve" aren't a named export for node <10
-const PassThrough$1 = Stream.PassThrough;
-const resolve_url = Url.resolve;
-
-/**
- * Fetch function
- *
- * @param   Mixed    url   Absolute url or Request instance
- * @param   Object   opts  Fetch options
- * @return  Promise
- */
-function fetch(url, opts) {
-
-	// allow custom promise
-	if (!fetch.Promise) {
-		throw new Error('native promise missing, set fetch.Promise to your favorite alternative');
-	}
-
-	Body.Promise = fetch.Promise;
-
-	// wrap http.request into fetch
-	return new fetch.Promise(function (resolve, reject) {
-		// build request object
-		const request = new Request(url, opts);
-		const options = getNodeRequestOptions(request);
-
-		const send = (options.protocol === 'https:' ? https : http).request;
-		const signal = request.signal;
-
-		let response = null;
-
-		const abort = function abort() {
-			let error = new AbortError('The user aborted a request.');
-			reject(error);
-			if (request.body && request.body instanceof Stream.Readable) {
-				request.body.destroy(error);
-			}
-			if (!response || !response.body) return;
-			response.body.emit('error', error);
-		};
-
-		if (signal && signal.aborted) {
-			abort();
-			return;
-		}
-
-		const abortAndFinalize = function abortAndFinalize() {
-			abort();
-			finalize();
-		};
-
-		// send request
-		const req = send(options);
-		let reqTimeout;
-
-		if (signal) {
-			signal.addEventListener('abort', abortAndFinalize);
-		}
-
-		function finalize() {
-			req.abort();
-			if (signal) signal.removeEventListener('abort', abortAndFinalize);
-			clearTimeout(reqTimeout);
-		}
-
-		if (request.timeout) {
-			req.once('socket', function (socket) {
-				reqTimeout = setTimeout(function () {
-					reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
-					finalize();
-				}, request.timeout);
-			});
-		}
-
-		req.on('error', function (err) {
-			reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, 'system', err));
-			finalize();
-		});
-
-		req.on('response', function (res) {
-			clearTimeout(reqTimeout);
-
-			const headers = createHeadersLenient(res.headers);
-
-			// HTTP fetch step 5
-			if (fetch.isRedirect(res.statusCode)) {
-				// HTTP fetch step 5.2
-				const location = headers.get('Location');
-
-				// HTTP fetch step 5.3
-				const locationURL = location === null ? null : resolve_url(request.url, location);
-
-				// HTTP fetch step 5.5
-				switch (request.redirect) {
-					case 'error':
-						reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, 'no-redirect'));
-						finalize();
-						return;
-					case 'manual':
-						// node-fetch-specific step: make manual redirect a bit easier to use by setting the Location header value to the resolved URL.
-						if (locationURL !== null) {
-							// handle corrupted header
-							try {
-								headers.set('Location', locationURL);
-							} catch (err) {
-								// istanbul ignore next: nodejs server prevent invalid response headers, we can't test this through normal request
-								reject(err);
-							}
-						}
-						break;
-					case 'follow':
-						// HTTP-redirect fetch step 2
-						if (locationURL === null) {
-							break;
-						}
-
-						// HTTP-redirect fetch step 5
-						if (request.counter >= request.follow) {
-							reject(new FetchError(`maximum redirect reached at: ${request.url}`, 'max-redirect'));
-							finalize();
-							return;
-						}
-
-						// HTTP-redirect fetch step 6 (counter increment)
-						// Create a new Request object.
-						const requestOpts = {
-							headers: new Headers(request.headers),
-							follow: request.follow,
-							counter: request.counter + 1,
-							agent: request.agent,
-							compress: request.compress,
-							method: request.method,
-							body: request.body,
-							signal: request.signal,
-							timeout: request.timeout,
-							size: request.size
-						};
-
-						// HTTP-redirect fetch step 9
-						if (res.statusCode !== 303 && request.body && getTotalBytes(request) === null) {
-							reject(new FetchError('Cannot follow redirect with body being a readable stream', 'unsupported-redirect'));
-							finalize();
-							return;
-						}
-
-						// HTTP-redirect fetch step 11
-						if (res.statusCode === 303 || (res.statusCode === 301 || res.statusCode === 302) && request.method === 'POST') {
-							requestOpts.method = 'GET';
-							requestOpts.body = undefined;
-							requestOpts.headers.delete('content-length');
-						}
-
-						// HTTP-redirect fetch step 15
-						resolve(fetch(new Request(locationURL, requestOpts)));
-						finalize();
-						return;
-				}
-			}
-
-			// prepare response
-			res.once('end', function () {
-				if (signal) signal.removeEventListener('abort', abortAndFinalize);
-			});
-			let body = res.pipe(new PassThrough$1());
-
-			const response_options = {
-				url: request.url,
-				status: res.statusCode,
-				statusText: res.statusMessage,
-				headers: headers,
-				size: request.size,
-				timeout: request.timeout,
-				counter: request.counter
-			};
-
-			// HTTP-network fetch step 12.1.1.3
-			const codings = headers.get('Content-Encoding');
-
-			// HTTP-network fetch step 12.1.1.4: handle content codings
-
-			// in following scenarios we ignore compression support
-			// 1. compression support is disabled
-			// 2. HEAD request
-			// 3. no Content-Encoding header
-			// 4. no content response (204)
-			// 5. content not modified response (304)
-			if (!request.compress || request.method === 'HEAD' || codings === null || res.statusCode === 204 || res.statusCode === 304) {
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
-
-			// For Node v6+
-			// Be less strict when decoding compressed responses, since sometimes
-			// servers send slightly invalid responses that are still accepted
-			// by common browsers.
-			// Always using Z_SYNC_FLUSH is what cURL does.
-			const zlibOptions = {
-				flush: zlib.Z_SYNC_FLUSH,
-				finishFlush: zlib.Z_SYNC_FLUSH
-			};
-
-			// for gzip
-			if (codings == 'gzip' || codings == 'x-gzip') {
-				body = body.pipe(zlib.createGunzip(zlibOptions));
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
-
-			// for deflate
-			if (codings == 'deflate' || codings == 'x-deflate') {
-				// handle the infamous raw deflate response from old servers
-				// a hack for old IIS and Apache servers
-				const raw = res.pipe(new PassThrough$1());
-				raw.once('data', function (chunk) {
-					// see http://stackoverflow.com/questions/37519828
-					if ((chunk[0] & 0x0F) === 0x08) {
-						body = body.pipe(zlib.createInflate());
-					} else {
-						body = body.pipe(zlib.createInflateRaw());
-					}
-					response = new Response(body, response_options);
-					resolve(response);
-				});
-				return;
-			}
-
-			// for br
-			if (codings == 'br' && typeof zlib.createBrotliDecompress === 'function') {
-				body = body.pipe(zlib.createBrotliDecompress());
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
-
-			// otherwise, use response as-is
-			response = new Response(body, response_options);
-			resolve(response);
-		});
-
-		writeToStream(req, request);
-	});
-}
-/**
- * Redirect code matching
- *
- * @param   Number   code  Status code
- * @return  Boolean
- */
-fetch.isRedirect = function (code) {
-	return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
-};
-
-// expose Promise
-fetch.Promise = global.Promise;
-
-module.exports = exports = fetch;
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports;
-exports.Headers = Headers;
-exports.Request = Request;
-exports.Response = Response;
-exports.FetchError = FetchError;
-
-
-/***/ }),
-
-/***/ 781:
-/***/ (function(module) {
-
-/**
- * Helpers
- */
-const escapeTest = /[&<>"']/;
-const escapeReplace = /[&<>"']/g;
-const escapeTestNoEncode = /[<>"']|&(?!#?\w+;)/;
-const escapeReplaceNoEncode = /[<>"']|&(?!#?\w+;)/g;
-const escapeReplacements = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;'
-};
-const getEscapeReplacement = (ch) => escapeReplacements[ch];
-function escape(html, encode) {
-  if (encode) {
-    if (escapeTest.test(html)) {
-      return html.replace(escapeReplace, getEscapeReplacement);
-    }
-  } else {
-    if (escapeTestNoEncode.test(html)) {
-      return html.replace(escapeReplaceNoEncode, getEscapeReplacement);
-    }
-  }
-
-  return html;
-}
-
-const unescapeTest = /&(#(?:\d+)|(?:#x[0-9A-Fa-f]+)|(?:\w+));?/ig;
-
-function unescape(html) {
-  // explicitly match decimal, hex, and named HTML entities
-  return html.replace(unescapeTest, (_, n) => {
-    n = n.toLowerCase();
-    if (n === 'colon') return ':';
-    if (n.charAt(0) === '#') {
-      return n.charAt(1) === 'x'
-        ? String.fromCharCode(parseInt(n.substring(2), 16))
-        : String.fromCharCode(+n.substring(1));
-    }
-    return '';
-  });
-}
-
-const caret = /(^|[^\[])\^/g;
-function edit(regex, opt) {
-  regex = regex.source || regex;
-  opt = opt || '';
-  const obj = {
-    replace: (name, val) => {
-      val = val.source || val;
-      val = val.replace(caret, '$1');
-      regex = regex.replace(name, val);
-      return obj;
-    },
-    getRegex: () => {
-      return new RegExp(regex, opt);
-    }
-  };
-  return obj;
-}
-
-const nonWordAndColonTest = /[^\w:]/g;
-const originIndependentUrl = /^$|^[a-z][a-z0-9+.-]*:|^[?#]/i;
-function cleanUrl(sanitize, base, href) {
-  if (sanitize) {
-    let prot;
-    try {
-      prot = decodeURIComponent(unescape(href))
-        .replace(nonWordAndColonTest, '')
-        .toLowerCase();
-    } catch (e) {
-      return null;
-    }
-    if (prot.indexOf('javascript:') === 0 || prot.indexOf('vbscript:') === 0 || prot.indexOf('data:') === 0) {
-      return null;
-    }
-  }
-  if (base && !originIndependentUrl.test(href)) {
-    href = resolveUrl(base, href);
-  }
-  try {
-    href = encodeURI(href).replace(/%25/g, '%');
-  } catch (e) {
-    return null;
-  }
-  return href;
-}
-
-const baseUrls = {};
-const justDomain = /^[^:]+:\/*[^/]*$/;
-const protocol = /^([^:]+:)[\s\S]*$/;
-const domain = /^([^:]+:\/*[^/]*)[\s\S]*$/;
-
-function resolveUrl(base, href) {
-  if (!baseUrls[' ' + base]) {
-    // we can ignore everything in base after the last slash of its path component,
-    // but we might need to add _that_
-    // https://tools.ietf.org/html/rfc3986#section-3
-    if (justDomain.test(base)) {
-      baseUrls[' ' + base] = base + '/';
-    } else {
-      baseUrls[' ' + base] = rtrim(base, '/', true);
-    }
-  }
-  base = baseUrls[' ' + base];
-  const relativeBase = base.indexOf(':') === -1;
-
-  if (href.substring(0, 2) === '//') {
-    if (relativeBase) {
-      return href;
-    }
-    return base.replace(protocol, '$1') + href;
-  } else if (href.charAt(0) === '/') {
-    if (relativeBase) {
-      return href;
-    }
-    return base.replace(domain, '$1') + href;
-  } else {
-    return base + href;
-  }
-}
-
-const noopTest = { exec: function noopTest() {} };
-
-function merge(obj) {
-  let i = 1,
-    target,
-    key;
-
-  for (; i < arguments.length; i++) {
-    target = arguments[i];
-    for (key in target) {
-      if (Object.prototype.hasOwnProperty.call(target, key)) {
-        obj[key] = target[key];
-      }
-    }
-  }
-
-  return obj;
-}
-
-function splitCells(tableRow, count) {
-  // ensure that every cell-delimiting pipe has a space
-  // before it to distinguish it from an escaped pipe
-  const row = tableRow.replace(/\|/g, (match, offset, str) => {
-      let escaped = false,
-        curr = offset;
-      while (--curr >= 0 && str[curr] === '\\') escaped = !escaped;
-      if (escaped) {
-        // odd number of slashes means | is escaped
-        // so we leave it alone
-        return '|';
-      } else {
-        // add space before unescaped |
-        return ' |';
-      }
-    }),
-    cells = row.split(/ \|/);
-  let i = 0;
-
-  if (cells.length > count) {
-    cells.splice(count);
-  } else {
-    while (cells.length < count) cells.push('');
-  }
-
-  for (; i < cells.length; i++) {
-    // leading or trailing whitespace is ignored per the gfm spec
-    cells[i] = cells[i].trim().replace(/\\\|/g, '|');
-  }
-  return cells;
-}
-
-// Remove trailing 'c's. Equivalent to str.replace(/c*$/, '').
-// /c*$/ is vulnerable to REDOS.
-// invert: Remove suffix of non-c chars instead. Default falsey.
-function rtrim(str, c, invert) {
-  const l = str.length;
-  if (l === 0) {
-    return '';
-  }
-
-  // Length of suffix matching the invert condition.
-  let suffLen = 0;
-
-  // Step left until we fail to match the invert condition.
-  while (suffLen < l) {
-    const currChar = str.charAt(l - suffLen - 1);
-    if (currChar === c && !invert) {
-      suffLen++;
-    } else if (currChar !== c && invert) {
-      suffLen++;
-    } else {
-      break;
-    }
-  }
-
-  return str.substr(0, l - suffLen);
-}
-
-function findClosingBracket(str, b) {
-  if (str.indexOf(b[1]) === -1) {
-    return -1;
-  }
-  const l = str.length;
-  let level = 0,
-    i = 0;
-  for (; i < l; i++) {
-    if (str[i] === '\\') {
-      i++;
-    } else if (str[i] === b[0]) {
-      level++;
-    } else if (str[i] === b[1]) {
-      level--;
-      if (level < 0) {
-        return i;
-      }
-    }
-  }
-  return -1;
-}
-
-function checkSanitizeDeprecation(opt) {
-  if (opt && opt.sanitize && !opt.silent) {
-    console.warn('marked(): sanitize and sanitizer parameters are deprecated since version 0.7.0, should not be used and will be removed in the future. Read more here: https://marked.js.org/#/USING_ADVANCED.md#options');
-  }
-}
-
-module.exports = {
-  escape,
-  unescape,
-  edit,
-  cleanUrl,
-  resolveUrl,
-  noopTest,
-  merge,
-  splitCells,
-  rtrim,
-  findClosingBracket,
-  checkSanitizeDeprecation
-};
-
-
-/***/ }),
-
-/***/ 827:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const command_1 = __webpack_require__(215);
-const os = __importStar(__webpack_require__(87));
-const path = __importStar(__webpack_require__(277));
-/**
- * The code to exit an action
- */
-var ExitCode;
-(function (ExitCode) {
-    /**
-     * A code indicating that the action was successful
-     */
-    ExitCode[ExitCode["Success"] = 0] = "Success";
-    /**
-     * A code indicating that the action was a failure
-     */
-    ExitCode[ExitCode["Failure"] = 1] = "Failure";
-})(ExitCode = exports.ExitCode || (exports.ExitCode = {}));
-//-----------------------------------------------------------------------
-// Variables
-//-----------------------------------------------------------------------
-/**
- * Sets env variable for this action and future actions in the job
- * @param name the name of the variable to set
- * @param val the value of the variable. Non-string values will be converted to a string via JSON.stringify
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function exportVariable(name, val) {
-    const convertedVal = command_1.toCommandValue(val);
-    process.env[name] = convertedVal;
-    command_1.issueCommand('set-env', { name }, convertedVal);
-}
-exports.exportVariable = exportVariable;
-/**
- * Registers a secret which will get masked from logs
- * @param secret value of the secret
- */
-function setSecret(secret) {
-    command_1.issueCommand('add-mask', {}, secret);
-}
-exports.setSecret = setSecret;
-/**
- * Prepends inputPath to the PATH (for this action and future actions)
- * @param inputPath
- */
-function addPath(inputPath) {
-    command_1.issueCommand('add-path', {}, inputPath);
-    process.env['PATH'] = `${inputPath}${path.delimiter}${process.env['PATH']}`;
-}
-exports.addPath = addPath;
-/**
- * Gets the value of an input.  The value is also trimmed.
- *
- * @param     name     name of the input to get
- * @param     options  optional. See InputOptions.
- * @returns   string
- */
-function getInput(name, options) {
-    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] || '';
-    if (options && options.required && !val) {
-        throw new Error(`Input required and not supplied: ${name}`);
-    }
-    return val.trim();
-}
-exports.getInput = getInput;
-/**
- * Sets the value of an output.
- *
- * @param     name     name of the output to set
- * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function setOutput(name, value) {
-    command_1.issueCommand('set-output', { name }, value);
-}
-exports.setOutput = setOutput;
-/**
- * Enables or disables the echoing of commands into stdout for the rest of the step.
- * Echoing is disabled by default if ACTIONS_STEP_DEBUG is not set.
- *
- */
-function setCommandEcho(enabled) {
-    command_1.issue('echo', enabled ? 'on' : 'off');
-}
-exports.setCommandEcho = setCommandEcho;
-//-----------------------------------------------------------------------
-// Results
-//-----------------------------------------------------------------------
-/**
- * Sets the action status to failed.
- * When the action exits it will be with an exit code of 1
- * @param message add error issue message
- */
-function setFailed(message) {
-    process.exitCode = ExitCode.Failure;
-    error(message);
-}
-exports.setFailed = setFailed;
-//-----------------------------------------------------------------------
-// Logging Commands
-//-----------------------------------------------------------------------
-/**
- * Gets whether Actions Step Debug is on or not
- */
-function isDebug() {
-    return process.env['RUNNER_DEBUG'] === '1';
-}
-exports.isDebug = isDebug;
-/**
- * Writes debug message to user log
- * @param message debug message
- */
-function debug(message) {
-    command_1.issueCommand('debug', {}, message);
-}
-exports.debug = debug;
-/**
- * Adds an error issue
- * @param message error issue message. Errors will be converted to string via toString()
- */
-function error(message) {
-    command_1.issue('error', message instanceof Error ? message.toString() : message);
-}
-exports.error = error;
-/**
- * Adds an warning issue
- * @param message warning issue message. Errors will be converted to string via toString()
- */
-function warning(message) {
-    command_1.issue('warning', message instanceof Error ? message.toString() : message);
-}
-exports.warning = warning;
-/**
- * Writes info to log with console.log.
- * @param message info message
- */
-function info(message) {
-    process.stdout.write(message + os.EOL);
-}
-exports.info = info;
-/**
- * Begin an output group.
- *
- * Output until the next `groupEnd` will be foldable in this group
- *
- * @param name The name of the output group
- */
-function startGroup(name) {
-    command_1.issue('group', name);
-}
-exports.startGroup = startGroup;
-/**
- * End an output group.
- */
-function endGroup() {
-    command_1.issue('endgroup');
-}
-exports.endGroup = endGroup;
-/**
- * Wrap an asynchronous function call in a group.
- *
- * Returns the same type as the function itself.
- *
- * @param name The name of the group
- * @param fn The function to wrap in the group
- */
-function group(name, fn) {
-    return __awaiter(this, void 0, void 0, function* () {
-        startGroup(name);
-        let result;
-        try {
-            result = yield fn();
-        }
-        finally {
-            endGroup();
-        }
-        return result;
-    });
-}
-exports.group = group;
-//-----------------------------------------------------------------------
-// Wrapper action state
-//-----------------------------------------------------------------------
-/**
- * Saves state for current action, the state can only be retrieved by this action's post job execution.
- *
- * @param     name     name of the state to store
- * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function saveState(name, value) {
-    command_1.issueCommand('save-state', { name }, value);
-}
-exports.saveState = saveState;
-/**
- * Gets the value of an state set by this action's main execution.
- *
- * @param     name     name of the state to get
- * @returns   string
- */
-function getState(name) {
-    return process.env[`STATE_${name}`] || '';
-}
-exports.getState = getState;
-//# sourceMappingURL=core.js.map
-
-/***/ }),
-
-/***/ 835:
-/***/ (function(module) {
-
-module.exports = require("url");
-
-/***/ }),
-
-/***/ 880:
-/***/ (function(module) {
-
-/**
- * Slugger generates header id
- */
-module.exports = class Slugger {
+class GetIssueDetails extends Command {
   constructor() {
-    this.seen = {};
+    super()
   }
 
-  serialize(value) {
-    return value
-      .toLowerCase()
-      .trim()
-      // remove html tags
-      .replace(/<[!\/a-z].*?>/ig, '')
-      // remove unwanted chars
-      .replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,./:;<=>?@[\]^`{|}~]/g, '')
-      .replace(/\s/g, '-');
+  name() {
+    return 'get_issue_details';
   }
 
   /**
-   * Finds the next safe (unique) slug to use
+   * Run all the validations necessary before you attempt to execute
+   * the command. Here we are doing a simple test just to illustrate the
+   * purpose of this method.
+   *
+   * @param {Object} options 
+   * @returns validation result
    */
-  getNextSafeSlug(originalSlug, isDryRun) {
-    let slug = originalSlug;
-    let occurenceAccumulator = 0;
-    if (this.seen.hasOwnProperty(slug)) {
-      occurenceAccumulator = this.seen[originalSlug];
-      do {
-        occurenceAccumulator++;
-        slug = originalSlug + '-' + occurenceAccumulator;
-      } while (this.seen.hasOwnProperty(slug));
+  validate(options) {
+    if (Object.keys(options).length <= 2) {
+      throw new Error(`Command options must be provided`);
     }
-    if (!isDryRun) {
-      this.seen[originalSlug] = occurenceAccumulator;
-      this.seen[slug] = 0;
-    }
-    return slug;
+    return 'validate()';
   }
 
   /**
-   * Convert string to unique id
-   * @param {object} options
-   * @param {boolean} options.dryrun Generates the next unique slug without updating the internal accumulator.
+   * Attempts to execute the work
+   *
+   * @param {Object} options
+   * @returns Result of the execution
    */
-  slug(value, options = {}) {
-    const slug = this.serialize(value);
-    return this.getNextSafeSlug(slug, options.dryrun);
+  async execute(options) {
+    this.validate(options);
+    return JSON.stringify({
+      'status': 'OK',
+      'output': `${this.name()} executed successfully 🙌`
+    });
   }
-};
+}
 
+module.exports = GetIssueDetails
 
 /***/ }),
 
-/***/ 889:
+/***/ 818:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const Tokenizer = __webpack_require__(541);
-const { defaults } = __webpack_require__(44);
-const { block, inline } = __webpack_require__(3);
+const Command = __webpack_require__(424)
 
-/**
- * smartypants text replacement
- */
-function smartypants(text) {
-  return text
-    // em-dashes
-    .replace(/---/g, '\u2014')
-    // en-dashes
-    .replace(/--/g, '\u2013')
-    // opening singles
-    .replace(/(^|[-\u2014/(\[{"\s])'/g, '$1\u2018')
-    // closing singles & apostrophes
-    .replace(/'/g, '\u2019')
-    // opening doubles
-    .replace(/(^|[-\u2014/(\[{\u2018\s])"/g, '$1\u201c')
-    // closing doubles
-    .replace(/"/g, '\u201d')
-    // ellipses
-    .replace(/\.{3}/g, '\u2026');
+class GetComments extends Command {
+  constructor() {
+    super()
+  }
+
+  name() {
+    return 'get_comments';
+  }
+
+  /**
+   * Run all the validations necessary before you attempt to execute
+   * the command. Here we are doing a simple test just to illustrate the
+   * purpose of this method.
+   *
+   * @param {Object} options 
+   * @returns validation result
+   */
+  validate(options) {
+    if (Object.keys(options).length <= 2) {
+      throw new Error(`Command options must be provided`);
+    }
+    return 'validate()';
+  }
+
+  /**
+   * Attempts to execute the work
+   *
+   * @param {Object} options
+   * @returns Result of the execution
+   */
+  async execute(options) {
+    this.validate(options);
+    return JSON.stringify({
+      'status': 'OK',
+      'output': `${this.name()} executed successfully 🙌`
+    });
+  }
 }
 
-/**
- * mangle email addresses
- */
-function mangle(text) {
-  let out = '',
-    i,
-    ch;
-
-  const l = text.length;
-  for (i = 0; i < l; i++) {
-    ch = text.charCodeAt(i);
-    if (Math.random() > 0.5) {
-      ch = 'x' + ch.toString(16);
-    }
-    out += '&#' + ch + ';';
-  }
-
-  return out;
-}
-
-/**
- * Block Lexer
- */
-module.exports = class Lexer {
-  constructor(options) {
-    this.tokens = [];
-    this.tokens.links = Object.create(null);
-    this.options = options || defaults;
-    this.options.tokenizer = this.options.tokenizer || new Tokenizer();
-    this.tokenizer = this.options.tokenizer;
-    this.tokenizer.options = this.options;
-
-    const rules = {
-      block: block.normal,
-      inline: inline.normal
-    };
-
-    if (this.options.pedantic) {
-      rules.block = block.pedantic;
-      rules.inline = inline.pedantic;
-    } else if (this.options.gfm) {
-      rules.block = block.gfm;
-      if (this.options.breaks) {
-        rules.inline = inline.breaks;
-      } else {
-        rules.inline = inline.gfm;
-      }
-    }
-    this.tokenizer.rules = rules;
-  }
-
-  /**
-   * Expose Rules
-   */
-  static get rules() {
-    return {
-      block,
-      inline
-    };
-  }
-
-  /**
-   * Static Lex Method
-   */
-  static lex(src, options) {
-    const lexer = new Lexer(options);
-    return lexer.lex(src);
-  }
-
-  /**
-   * Static Lex Inline Method
-   */
-  static lexInline(src, options) {
-    const lexer = new Lexer(options);
-    return lexer.inlineTokens(src);
-  }
-
-  /**
-   * Preprocessing
-   */
-  lex(src) {
-    src = src
-      .replace(/\r\n|\r/g, '\n')
-      .replace(/\t/g, '    ');
-
-    this.blockTokens(src, this.tokens, true);
-
-    this.inline(this.tokens);
-
-    return this.tokens;
-  }
-
-  /**
-   * Lexing
-   */
-  blockTokens(src, tokens = [], top = true) {
-    src = src.replace(/^ +$/gm, '');
-    let token, i, l, lastToken;
-
-    while (src) {
-      // newline
-      if (token = this.tokenizer.space(src)) {
-        src = src.substring(token.raw.length);
-        if (token.type) {
-          tokens.push(token);
-        }
-        continue;
-      }
-
-      // code
-      if (token = this.tokenizer.code(src, tokens)) {
-        src = src.substring(token.raw.length);
-        if (token.type) {
-          tokens.push(token);
-        } else {
-          lastToken = tokens[tokens.length - 1];
-          lastToken.raw += '\n' + token.raw;
-          lastToken.text += '\n' + token.text;
-        }
-        continue;
-      }
-
-      // fences
-      if (token = this.tokenizer.fences(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // heading
-      if (token = this.tokenizer.heading(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // table no leading pipe (gfm)
-      if (token = this.tokenizer.nptable(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // hr
-      if (token = this.tokenizer.hr(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // blockquote
-      if (token = this.tokenizer.blockquote(src)) {
-        src = src.substring(token.raw.length);
-        token.tokens = this.blockTokens(token.text, [], top);
-        tokens.push(token);
-        continue;
-      }
-
-      // list
-      if (token = this.tokenizer.list(src)) {
-        src = src.substring(token.raw.length);
-        l = token.items.length;
-        for (i = 0; i < l; i++) {
-          token.items[i].tokens = this.blockTokens(token.items[i].text, [], false);
-        }
-        tokens.push(token);
-        continue;
-      }
-
-      // html
-      if (token = this.tokenizer.html(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // def
-      if (top && (token = this.tokenizer.def(src))) {
-        src = src.substring(token.raw.length);
-        if (!this.tokens.links[token.tag]) {
-          this.tokens.links[token.tag] = {
-            href: token.href,
-            title: token.title
-          };
-        }
-        continue;
-      }
-
-      // table (gfm)
-      if (token = this.tokenizer.table(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // lheading
-      if (token = this.tokenizer.lheading(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // top-level paragraph
-      if (top && (token = this.tokenizer.paragraph(src))) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // text
-      if (token = this.tokenizer.text(src, tokens)) {
-        src = src.substring(token.raw.length);
-        if (token.type) {
-          tokens.push(token);
-        } else {
-          lastToken = tokens[tokens.length - 1];
-          lastToken.raw += '\n' + token.raw;
-          lastToken.text += '\n' + token.text;
-        }
-        continue;
-      }
-
-      if (src) {
-        const errMsg = 'Infinite loop on byte: ' + src.charCodeAt(0);
-        if (this.options.silent) {
-          console.error(errMsg);
-          break;
-        } else {
-          throw new Error(errMsg);
-        }
-      }
-    }
-
-    return tokens;
-  }
-
-  inline(tokens) {
-    let i,
-      j,
-      k,
-      l2,
-      row,
-      token;
-
-    const l = tokens.length;
-    for (i = 0; i < l; i++) {
-      token = tokens[i];
-      switch (token.type) {
-        case 'paragraph':
-        case 'text':
-        case 'heading': {
-          token.tokens = [];
-          this.inlineTokens(token.text, token.tokens);
-          break;
-        }
-        case 'table': {
-          token.tokens = {
-            header: [],
-            cells: []
-          };
-
-          // header
-          l2 = token.header.length;
-          for (j = 0; j < l2; j++) {
-            token.tokens.header[j] = [];
-            this.inlineTokens(token.header[j], token.tokens.header[j]);
-          }
-
-          // cells
-          l2 = token.cells.length;
-          for (j = 0; j < l2; j++) {
-            row = token.cells[j];
-            token.tokens.cells[j] = [];
-            for (k = 0; k < row.length; k++) {
-              token.tokens.cells[j][k] = [];
-              this.inlineTokens(row[k], token.tokens.cells[j][k]);
-            }
-          }
-
-          break;
-        }
-        case 'blockquote': {
-          this.inline(token.tokens);
-          break;
-        }
-        case 'list': {
-          l2 = token.items.length;
-          for (j = 0; j < l2; j++) {
-            this.inline(token.items[j].tokens);
-          }
-          break;
-        }
-        default: {
-          // do nothing
-        }
-      }
-    }
-
-    return tokens;
-  }
-
-  /**
-   * Lexing/Compiling
-   */
-  inlineTokens(src, tokens = [], inLink = false, inRawBlock = false, prevChar = '') {
-    let token;
-
-    // String with links masked to avoid interference with em and strong
-    let maskedSrc = src;
-    let match;
-
-    // Mask out reflinks
-    if (this.tokens.links) {
-      const links = Object.keys(this.tokens.links);
-      if (links.length > 0) {
-        while ((match = this.tokenizer.rules.inline.reflinkSearch.exec(maskedSrc)) != null) {
-          if (links.includes(match[0].slice(match[0].lastIndexOf('[') + 1, -1))) {
-            maskedSrc = maskedSrc.slice(0, match.index) + '[' + 'a'.repeat(match[0].length - 2) + ']' + maskedSrc.slice(this.tokenizer.rules.inline.reflinkSearch.lastIndex);
-          }
-        }
-      }
-    }
-    // Mask out other blocks
-    while ((match = this.tokenizer.rules.inline.blockSkip.exec(maskedSrc)) != null) {
-      maskedSrc = maskedSrc.slice(0, match.index) + '[' + 'a'.repeat(match[0].length - 2) + ']' + maskedSrc.slice(this.tokenizer.rules.inline.blockSkip.lastIndex);
-    }
-
-    while (src) {
-      // escape
-      if (token = this.tokenizer.escape(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // tag
-      if (token = this.tokenizer.tag(src, inLink, inRawBlock)) {
-        src = src.substring(token.raw.length);
-        inLink = token.inLink;
-        inRawBlock = token.inRawBlock;
-        tokens.push(token);
-        continue;
-      }
-
-      // link
-      if (token = this.tokenizer.link(src)) {
-        src = src.substring(token.raw.length);
-        if (token.type === 'link') {
-          token.tokens = this.inlineTokens(token.text, [], true, inRawBlock);
-        }
-        tokens.push(token);
-        continue;
-      }
-
-      // reflink, nolink
-      if (token = this.tokenizer.reflink(src, this.tokens.links)) {
-        src = src.substring(token.raw.length);
-        if (token.type === 'link') {
-          token.tokens = this.inlineTokens(token.text, [], true, inRawBlock);
-        }
-        tokens.push(token);
-        continue;
-      }
-
-      // strong
-      if (token = this.tokenizer.strong(src, maskedSrc, prevChar)) {
-        src = src.substring(token.raw.length);
-        token.tokens = this.inlineTokens(token.text, [], inLink, inRawBlock);
-        tokens.push(token);
-        continue;
-      }
-
-      // em
-      if (token = this.tokenizer.em(src, maskedSrc, prevChar)) {
-        src = src.substring(token.raw.length);
-        token.tokens = this.inlineTokens(token.text, [], inLink, inRawBlock);
-        tokens.push(token);
-        continue;
-      }
-
-      // code
-      if (token = this.tokenizer.codespan(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // br
-      if (token = this.tokenizer.br(src)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // del (gfm)
-      if (token = this.tokenizer.del(src)) {
-        src = src.substring(token.raw.length);
-        token.tokens = this.inlineTokens(token.text, [], inLink, inRawBlock);
-        tokens.push(token);
-        continue;
-      }
-
-      // autolink
-      if (token = this.tokenizer.autolink(src, mangle)) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // url (gfm)
-      if (!inLink && (token = this.tokenizer.url(src, mangle))) {
-        src = src.substring(token.raw.length);
-        tokens.push(token);
-        continue;
-      }
-
-      // text
-      if (token = this.tokenizer.inlineText(src, inRawBlock, smartypants)) {
-        src = src.substring(token.raw.length);
-        prevChar = token.raw.slice(-1);
-        tokens.push(token);
-        continue;
-      }
-
-      if (src) {
-        const errMsg = 'Infinite loop on byte: ' + src.charCodeAt(0);
-        if (this.options.silent) {
-          console.error(errMsg);
-          break;
-        } else {
-          throw new Error(errMsg);
-        }
-      }
-    }
-
-    return tokens;
-  }
-};
-
+module.exports = GetComments
 
 /***/ })
 
