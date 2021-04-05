@@ -34,7 +34,7 @@ program
     const options = program.opts();
     const invoker = new Invoker(options);
     const result = await invoker.executeCommand(options);
-    core.setOutput(result);
+    core.setOutput("result", result);
   } catch (Error) {
     core.setFailed(` ⚠️  ${Error.message}`);
   }
