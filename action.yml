@@ -1,22 +1,26 @@
 name: 'Action Items Sync'
 description: 'Extract action items from multiple issues and aggregate them into 1'
 inputs:
-  owner:
+  org:
     description: 'Repository Owner (User or Organization)'
-    required: true
+    required: false
 
   repo:
-    description: 'Repository To Monitor'
+    description: 'Repository name'
+    required: false
+
+  issue-number:
+    description: 'Issue Number'
     required: true
 
-  issueNumber:
-    description: 'Created / Edited Issue Number'
+  token:
+    description: 'Access token'
     required: true
 
-  aggregateIssueLabel:
-    description: 'Label to Mark the Aggregate Issue'
-    required: true
-    default: 'gh-issues-ltt'
+outputs:
+  result:
+    description: 'Result of the command executed'
+
 runs:
   using: 'node12'
   main: 'dist/index.js'
