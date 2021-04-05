@@ -1,16 +1,3 @@
-# simple-action
-
-> A very simple GitHub action implementing the command design pattern
-
-## Context post
-
-![](LINK TO BLOG POST)
-
-## Usage
-
-### Workflow setup
-
-```yaml
 name: Test Workflow
 
 on:
@@ -36,8 +23,3 @@ jobs:
           commmand: "get_comments"
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: "1"
-```
-
-## License
-
-- [MIT License](./LICENSE)
