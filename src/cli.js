@@ -22,7 +22,7 @@ program
   .option('-o, --org <org_name>', 'Organisation name', core.getInput('org'))
   .option('-r, --repo <repo_name>', 'Repository name', core.getInput('repo'))
   .parse();
-  
+
 /**
  * await won’t work in the top-level code so we have to wrap it with an
  * anonymous async function and invoke it
