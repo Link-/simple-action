@@ -4,7 +4,7 @@
 
 ## Context post
 
-![](LINK TO BLOG POST)
+This repository is an example action adopting the design pattern discussed in this blog post: [Adopting the command design pattern for GitHub Actions](https://blog.bassemdy.com/2021/04/05/github/actions/design-patterns/command/best-practices/adopt-command-pattern-for-actions.html)
 
 ## Usage
 
