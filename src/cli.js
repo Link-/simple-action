@@ -16,7 +16,7 @@ const program = new Command();
  */
 program
   .version(meta.version)
-  .requiredOption('-c, --command <command name>', 'Command to execute', core.getInput('command'))
+  .option('-c, --command <command name>', 'Command to execute', core.getInput('command'))
   .option('-t, --token <token>', 'Personal Access Token or GITHUB_TOKEN', core.getInput('token'))
   .option('-i, --issue-number <number>', 'Issue number', core.getInput('issue-number'))
   .option('-o, --org <org_name>', 'Organisation name', core.getInput('org'))
