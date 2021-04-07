@@ -1,4 +1,3 @@
-const { command } = require('commander');
 const commands = require('./commands');
 
 class Invoker {
@@ -14,7 +13,7 @@ class Invoker {
    */
   loadCommands() {
     commands.reduce((accumulator, command) => {
-      let instance = new command;
+      let instance = new command(this.options);
       accumulator[instance.name()] = instance;
       return accumulator;
     }, this.commandsList);

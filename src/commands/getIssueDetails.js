@@ -21,7 +21,7 @@ class GetIssueDetails extends Command {
     if (Object.keys(options).length <= 2) {
       throw new Error(`Command options must be provided`);
     }
-    return 'validate()';
+    return true;
   }
 
   /**

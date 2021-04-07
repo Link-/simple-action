@@ -1,5 +1,5 @@
 class Command {
-  constructor (api, params) {
+  constructor (options) {
     if (this.constructor === Command) {
       throw new Error("Abstract classes can't be instantiated.")
     }

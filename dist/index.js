@@ -2444,7 +2444,7 @@ function incrementNodeInspectorPort(args) {
 /***/ (function(module) {
 
 class Command {
-  constructor (api, params) {
+  constructor (options) {
     if (this.constructor === Command) {
       throw new Error("Abstract classes can't be instantiated.")
     }
@@ -2481,7 +2481,6 @@ module.exports = [
 /***/ 456:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const { command } = __webpack_require__(346);
 const commands = __webpack_require__(426);
 
 class Invoker {
@@ -2497,7 +2496,7 @@ class Invoker {
    */
   loadCommands() {
     commands.reduce((accumulator, command) => {
-      let instance = new command;
+      let instance = new command(this.options);
       accumulator[instance.name()] = instance;
       return accumulator;
     }, this.commandsList);
@@ -2577,7 +2576,7 @@ class GetIssueDetails extends Command {
     if (Object.keys(options).length <= 2) {
       throw new Error(`Command options must be provided`);
     }
-    return 'validate()';
+    return true;
   }
 
   /**
@@ -2625,7 +2624,7 @@ class GetComments extends Command {
     if (Object.keys(options).length <= 2) {
       throw new Error(`Command options must be provided`);
     }
-    return 'validate()';
+    return true;
   }
 
   /**
