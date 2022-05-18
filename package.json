@@ -22,6 +22,6 @@
   "dependencies": {
     "@actions/core": "^1.2.5",
     "commander": "^7.2.0",
-    "ncc": "^0.3.6"
+    "@vercel/ncc": "^0.33.4"
   }
 }
